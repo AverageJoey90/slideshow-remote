@@ -766,6 +766,7 @@
         '</b> with that password and leave <b>Auto-Join</b> on. After that your phone joins it by itself whenever fast upload is on' +
         ' — give it a few seconds. (It may say "No internet" — that\'s fine, stay on it.)</div>' +
         `<a class="btnlink" href="${esc(hs.url)}" target="_blank" rel="noopener">Open the upload page</a>` +
+        '<div class="hint" style="margin-top:0">Signs you in automatically. Bookmark the page it opens (<b>http://10.42.0.1</b>) — the bookmark works every time fast upload is on, from any phone or computer (sign in with the remote\'s user name and password).</div>' +
         kv('Back to normal Wi-Fi in', Math.floor(hs.left / 60) + ':' + pad(hs.left % 60) + (hs.phone ? '' : ' (if no one joins)')) +
         `<button class="ghost" id="hsCodes" type="button" style="width:100%;margin:6px 0 8px">${hs.codes ? 'Hide' : 'Show'} the join codes on the slideshow screen</button>`;
       $('hsCodes').onclick = async () => {
