@@ -70,6 +70,30 @@
   #upBox .bar { height: 10px; border-radius: 99px; background: #26314a; overflow: hidden; margin: 8px 0; }
   #upBox .bar i { display: block; height: 100%; width: 0; background: var(--acc); transition: width .3s; }
   .empty { color: var(--dim); font-size: 14px; padding: 6px 0; }
+  .kv { display: flex; justify-content: space-between; gap: 12px; padding: 6px 0; font-size: 15px; }
+  .kv span:first-child { color: var(--dim); white-space: nowrap; flex: none; }
+  .kv span:last-child { text-align: right; }
+  .kv .good { color: var(--ok); } .kv .bad { color: #ffb15c; }
+  .net { display: flex; align-items: center; gap: 10px; width: 100%; background: none; color: var(--text); text-align: left;
+    padding: 12px 4px; border-radius: 0; border-top: 1px solid var(--line); font-weight: 400; }
+  .net:first-child { border-top: 0; }
+  .net .nname { flex: 1; min-width: 0; word-break: break-word; }
+  .net .nname small { display: block; color: var(--dim); font-size: 12px; }
+  .bars { display: inline-flex; align-items: flex-end; gap: 2px; height: 16px; flex: none; }
+  .bars i { width: 4px; background: #3a4560; border-radius: 1px; } .bars i.on { background: var(--text); }
+  .bars i:nth-child(1) { height: 25%; } .bars i:nth-child(2) { height: 50%; } .bars i:nth-child(3) { height: 75%; } .bars i:nth-child(4) { height: 100%; }
+  #wifiList { margin-top: 10px; background: #0f1522; border: 1px solid var(--line); border-radius: 12px; padding: 0 10px; }
+  #wifiJoin { margin-top: 10px; background: #0f1522; border: 1px solid var(--line); border-radius: 12px; padding: 12px; }
+  .saved { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-top: 1px solid var(--line); }
+  .saved:first-of-type { border-top: 0; } .saved div { flex: 1; min-width: 0; word-break: break-word; }
+  .saved small { display: block; color: var(--dim); font-size: 12px; }
+  .saved button { padding: 8px 12px; font-size: 14px; }
+  .field select { width: 100%; }
+  details.more { margin: 4px 0 10px; } details.more summary { color: var(--acc); cursor: pointer; padding: 6px 0; font-size: 15px; }
+  #hsBox { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); }
+  #hsInfo .kv b { letter-spacing: .04em; }
+  a.btnlink { display: block; text-align: center; text-decoration: none; background: var(--acc); color: #fff; font-weight: 600;
+    border-radius: 12px; padding: 14px; margin: 8px 0; }
 </style>
 </head>
 <body>
@@ -156,6 +180,12 @@
       <button class="ghost" id="refreshFiles" type="button">Refresh list</button>
     </div>
     <button class="big" id="uploadBtn" type="button">Upload a PowerPoint…</button>
+    <button class="ghost big" id="fastBtn" type="button" style="margin-top:8px">⚡ Fast upload over Wi-Fi (big files)</button>
+    <div id="bigBox" hidden style="margin-top:10px;background:#0f1522;border:1px solid var(--line);border-radius:12px;padding:12px">
+      <div id="bigText" style="margin-bottom:10px"></div>
+      <button class="big" id="bigFast" type="button">⚡ Use fast upload (seconds)</button>
+      <button class="ghost big" id="bigBt" type="button" style="margin-top:8px"></button>
+    </div>
     <input type="file" id="uploadInput" accept=".pptx,application/vnd.openxmlformats-officedocument.presentationml.presentation" hidden>
     <div id="upBox" hidden>
       <div id="upName" style="font-weight:600;word-break:break-word"></div>
@@ -166,6 +196,48 @@
     <div class="hint">The newest PowerPoint is the one that shows — tap <b>Show</b> to switch to another.
       Uploading goes over Bluetooth, so it's slow (roughly 1–3 minutes per MB): keep this app open and the
       phone unlocked until it finishes. Shrink big files first (PowerPoint: File → Compress Pictures).</div>
+  </div>
+
+  <div class="card always" id="wifiCard">
+    <h2>Wi-Fi</h2>
+    <div id="wifiStatus"><div class="empty">Checking…</div></div>
+    <button class="ghost" id="wifiScanBtn" type="button" style="width:100%;margin-top:10px">Find Wi-Fi networks</button>
+    <div id="wifiList" hidden></div>
+    <div id="wifiJoin" hidden>
+      <div class="field"><label for="wjSsid">Network name</label><input type="text" id="wjSsid" autocapitalize="off" autocomplete="off" spellcheck="false" maxlength="32"></div>
+      <div class="field"><label for="wjSec">Security</label>
+        <select id="wjSec">
+          <option value="wpa">WPA / WPA2 Personal (password)</option>
+          <option value="wpa3">WPA3 Personal (password)</option>
+          <option value="enterprise">WPA / WPA2 Enterprise (user name + password)</option>
+          <option value="wep">WEP (old)</option>
+          <option value="open">None (open network)</option>
+        </select></div>
+      <div class="field" id="wjIdentityBox" hidden><label for="wjIdentity">User name</label><input type="text" id="wjIdentity" autocapitalize="off" autocomplete="off" spellcheck="false"></div>
+      <div class="field" id="wjPassBox"><label for="wjPass" id="wjPassLabel">Password</label><input type="password" id="wjPass" autocomplete="off"></div>
+      <details class="more" id="wjMore" hidden><summary>More options (only if your IT team gave you these)</summary>
+        <div class="field"><label for="wjEap">Method</label><select id="wjEap"><option value="">PEAP (usual)</option><option value="ttls">TTLS</option></select></div>
+        <div class="field"><label for="wjPhase2">Inner authentication</label><select id="wjPhase2"><option value="">MSCHAPv2 (usual)</option><option value="pap">PAP</option><option value="gtc">GTC</option><option value="mschap">MSCHAP</option></select></div>
+        <div class="field"><label for="wjAnon">Anonymous identity</label><input type="text" id="wjAnon" autocapitalize="off" autocomplete="off" spellcheck="false"></div>
+        <div class="field"><label for="wjDomain">Certificate domain (e.g. radius.example.org)</label><input type="text" id="wjDomain" autocapitalize="off" autocomplete="off" spellcheck="false"></div>
+      </details>
+      <div class="row" id="wjShowRow"><label for="wjShow">Show password</label><label class="switch"><input type="checkbox" id="wjShow"><span></span></label></div>
+      <div class="row" id="wjHiddenRow" hidden><label for="wjHidden">Hidden network (doesn't show in the list)</label><label class="switch"><input type="checkbox" id="wjHidden"><span></span></label></div>
+      <div class="filebtns"><button class="ghost" id="wjCancel" type="button">Cancel</button><button id="wjGo" type="button">Connect</button></div>
+    </div>
+    <div id="wifiSaved" style="margin-top:12px"></div>
+    <div id="hsBox">
+      <div class="kv"><span>Fast upload over Wi-Fi</span></div>
+      <div id="hsInfo"></div>
+      <button class="ghost" id="hsBtn" type="button" style="width:100%">Start fast upload</button>
+      <div class="hint">For big PowerPoints. The slideshow switches its Wi-Fi to a network of its own for a while (same name
+        and password every time, so your phone joins it by itself after the first time). Upload on the page, then tap
+        "I'm finished" — it goes back to its normal Wi-Fi then, or by itself after 10 minutes of nothing happening.
+        Uploads take seconds instead of minutes.</div>
+    </div>
+    <div class="hint">Networks you join here are saved into <b>wifi.txt</b> on the USB stick, so the slideshow joins them by itself
+      next time. With no stick in, the Pi joins and remembers it, and copies it into wifi.txt when a stick is plugged in.
+      The Wi-Fi password is sent encrypted.</div>
   </div>
 
   <div class="card pairbox always">
@@ -262,9 +334,11 @@
     conn('Connected to ' + (h.name || 'Slideshow'), 'on');
   }
 
+  let keyNonce = null;
   async function login(user, pass) {
-    const r = await request({ cmd: 'auth', user, mac: await hmacHex(pass, nonce + ':' + user) });
-    if (r.ok) return r;
+    const used = nonce;
+    const r = await request({ cmd: 'auth', user, mac: await hmacHex(pass, used + ':' + user) });
+    if (r.ok) { keyNonce = used; return r; }
     if (r.nonce) nonce = r.nonce;
     throw Object.assign(new Error(r.error), { reply: r });
   }
@@ -308,6 +382,7 @@
     view('vMain');
     showState(r);
     loadFiles();
+    loadWifi();
     clearInterval(pollT);
     pollT = setInterval(refresh, 3000);
   }
@@ -534,7 +609,38 @@
 
   $('refreshFiles').onclick = loadFiles;
   $('uploadBtn').onclick = () => { $('uploadInput').value = ''; $('uploadInput').click(); };
-  $('uploadInput').onchange = () => { const f = $('uploadInput').files[0]; if (f) upload(f); };
+  // Big file: offer fast upload over Wi-Fi instead of slow Bluetooth
+  let bigFile = null;
+  $('uploadInput').onchange = () => {
+    const f = $('uploadInput').files[0];
+    if (!f) return;
+    if (f.size > 3 * 1048576 && wifi && wifi.hasWifi) {
+      bigFile = f;
+      $('bigText').innerHTML = `<b>${esc(f.name)}</b> is ${mb(f.size)} — over Bluetooth that's roughly ${Math.max(2, Math.round(f.size / 1048576 * 2))} minutes. Fast upload over Wi-Fi takes seconds.`;
+      $('bigBt').textContent = 'Send over Bluetooth anyway';
+      $('bigBox').hidden = false;
+      return;
+    }
+    upload(f);
+  };
+  $('bigBt').onclick = () => { $('bigBox').hidden = true; if (bigFile) upload(bigFile); bigFile = null; };
+  $('bigFast').onclick = () => { $('bigBox').hidden = true; bigFile = null; startFast(); };
+  $('fastBtn').onclick = () => startFast();
+
+  // Start fast upload (if it isn't on already) and take you to its details in the Wi-Fi section
+  async function startFast() {
+    if (!(wifi && wifi.hotspot && wifi.hotspot.active)) {
+      $('fastBtn').disabled = true;
+      try {
+        const r = await request({ cmd: 'hotspotStart' });
+        if (!r.ok) { say(r.msg || r.error, true); return; }
+        showWifi(r.wifi);
+        say('Fast upload on — join its Wi-Fi, then open the upload page');
+      } catch (e) { say('Connection lost', true); return; }
+      finally { $('fastBtn').disabled = false; }
+    }
+    $('hsBox').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
   $('upCancel').onclick = () => { if (uploading) { uploading.cancel = true; $('upText').textContent = 'Cancelling…'; } };
 
   const toHex = buf => [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
@@ -607,6 +713,184 @@
       updateDelBtn();
     }
   }
+
+  // ---------- Wi-Fi ----------
+  let wifi = null, wifiWatch = null, wifiT = null;
+
+  async function hmacBytes(keyBytes, data) {
+    const k = await crypto.subtle.importKey('raw', keyBytes, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+    return new Uint8Array(await crypto.subtle.sign('HMAC', k, data));
+  }
+  // Encrypt with a key made from the password and this log-in (the Pi does the same to decrypt)
+  async function seal(text) {
+    const key = await hmacBytes(enc.encode(creds.pass), enc.encode('slideshow-secret:' + keyNonce));
+    const iv = crypto.getRandomValues(new Uint8Array(16)), pt = enc.encode(text), ct = new Uint8Array(pt.length);
+    for (let i = 0; i * 32 < pt.length; i++) {
+      const blk = new Uint8Array(20); blk.set(iv); new DataView(blk.buffer).setUint32(16, i, false);
+      const ks = await hmacBytes(key, blk);
+      for (let j = 0; j < 32 && i * 32 + j < pt.length; j++) ct[i * 32 + j] = pt[i * 32 + j] ^ ks[j];
+    }
+    const tagIn = new Uint8Array(19 + ct.length); tagIn.set(enc.encode('tag')); tagIn.set(iv, 3); tagIn.set(ct, 19);
+    return { iv: toHex(iv), ct: toHex(ct), tag: toHex(await hmacBytes(key, tagIn)) };
+  }
+
+  const KIND = { open: 'Open', wep: 'WEP (old)', wpa: 'Password', wpa3: 'WPA3 password', enterprise: 'Work Wi-Fi (user name)' };
+  const bars = sig => '<span class="bars">' + [20, 45, 65, 85].map(t => `<i class="${sig >= t ? 'on' : ''}"></i>`).join('') + '</span>';
+  const kv = (k, v, cls) => `<div class="kv"><span>${k}</span><span class="${cls || ''}">${v}</span></div>`;
+
+  async function loadWifi() {
+    try {
+      const r = await request({ cmd: 'wifiStatus' });
+      if (r.ok) showWifi(r.wifi); else if (r.error === 'login') reLogin();
+    } catch (e) { /* connection dropped */ }
+  }
+
+  function showWifi(w) {
+    wifi = w;
+    const state = !w.hasWifi ? ['No Wi-Fi on this Pi', 'bad'] : w.state === 'connected' ? [`Connected to “${esc(w.ssid)}” ${bars(w.signal)}`, 'good']
+      : w.state === 'connecting' ? ['Connecting…', ''] : w.state === 'unavailable' ? ['Switched off', 'bad'] : ['Not connected', 'bad'];
+    $('wifiStatus').innerHTML = kv('Wi-Fi', state[0], state[1]) + (w.ip ? kv('Address', esc(w.ip)) : '') +
+      kv('Ethernet cable', w.ethernet ? 'Connected' : 'Not connected', w.ethernet ? 'good' : '') +
+      kv('Internet', w.internet ? 'Yes' : 'No', w.internet ? 'good' : 'bad') +
+      kv('Clock on screen', w.clock ? 'Showing' : 'Hidden (no internet)', w.clock ? 'good' : 'bad');
+    $('wifiSaved').innerHTML = !w.saved.length ? '' : '<div class="kv"><span>Saved networks (first in range is used)</span></div>' +
+      w.saved.map((n, i) => `<div class="saved"><div>${esc(n.ssid)}<small>${n.where === 'stick' ? 'in wifi.txt on the USB stick' : 'on the Pi — goes into wifi.txt when the stick is plugged in'}${n.kind && n.kind !== 'wpa' ? ' · ' + KIND[n.kind] : ''}</small></div>
+        <button class="ghost danger" data-forget="${i}" type="button">Forget</button></div>`).join('');
+    $('wifiSaved').querySelectorAll('[data-forget]').forEach(b => b.onclick = () => forget(b, w.saved[+b.dataset.forget].ssid));
+    const hs = w.hotspot;
+    $('wifiScanBtn').disabled = !w.hasWifi || !!(hs && hs.active);
+    if (hs && hs.active) {
+      $('wifiStatus').querySelector('.kv span:last-child').innerHTML = `Fast upload — its own Wi-Fi “${esc(hs.ssid)}”`;
+      $('hsInfo').innerHTML = kv('Wi-Fi to join', '<b>' + esc(hs.ssid) + '</b>') + kv('Password', '<b>' + esc(hs.password) + '</b>') +
+        '<div class="hint" style="margin-top:2px">First time only: in your phone\'s Settings → Wi-Fi, join <b>' + esc(hs.ssid) +
+        '</b> with that password and leave <b>Auto-Join</b> on. After that your phone joins it by itself whenever fast upload is on' +
+        ' — give it a few seconds. (It may say "No internet" — that\'s fine, stay on it.)</div>' +
+        `<a class="btnlink" href="${esc(hs.url)}" target="_blank" rel="noopener">Open the upload page</a>` +
+        kv('Back to normal Wi-Fi in', Math.floor(hs.left / 60) + ':' + pad(hs.left % 60) + (hs.phone ? '' : ' (if no one joins)')) +
+        `<button class="ghost" id="hsCodes" type="button" style="width:100%;margin:6px 0 8px">${hs.codes ? 'Hide' : 'Show'} the join codes on the slideshow screen</button>`;
+      $('hsCodes').onclick = async () => {
+        try { const r = await request({ cmd: 'hotspotCodes', show: !hs.codes }); if (r.ok) showWifi(r.wifi); } catch (e) { say('Connection lost', true); }
+      };
+      $('hsBtn').textContent = 'Finish — back to normal Wi-Fi';
+    } else {
+      $('hsInfo').innerHTML = '';
+      $('hsBtn').textContent = 'Start fast upload';
+    }
+    $('hsBtn').disabled = !w.hasWifi || (!w.stick && !(hs && hs.active));
+    $('fastBtn').textContent = hs && hs.active ? '⚡ Fast upload is on — show how to connect' : '⚡ Fast upload over Wi-Fi (big files)';
+    $('fastBtn').hidden = !w.hasWifi;
+  }
+
+  $('hsBtn').onclick = async () => {
+    const on = wifi && wifi.hotspot && wifi.hotspot.active;
+    $('hsBtn').disabled = true;
+    try {
+      const r = await request({ cmd: on ? 'hotspotStop' : 'hotspotStart' });
+      if (r.ok) { showWifi(r.wifi); say(on ? 'Going back to the normal Wi-Fi…' : 'Fast upload on — join its Wi-Fi, then open the upload page'); }
+      else say((r.msg || r.error), true);
+    } catch (e) { say('Connection lost', true); }
+    finally { if (wifi) showWifi(wifi); }
+  };
+
+  $('wifiScanBtn').onclick = async () => {
+    $('wifiScanBtn').disabled = true; $('wifiScanBtn').textContent = 'Looking for networks…';
+    try {
+      let r = await request({ cmd: 'wifiScan' });
+      if (r.ok && !r.networks.length) { await sleep(4000); r = await request({ cmd: 'wifiScan' }); }   // first scan can be empty
+      if (!r.ok) { say('Could not look for networks: ' + (r.msg || r.error), true); return; }
+      showWifi(r.wifi);
+      const list = $('wifiList');
+      list.innerHTML = r.networks.map((n, i) => `<button class="net" type="button" data-net="${i}">
+          <span class="nname">${esc(n.ssid)}<small>${n.current ? 'Connected · ' : ''}${KIND[n.kind] || (n.secure ? 'Password' : 'Open')}</small></span>
+          ${n.secure ? '🔒' : ''} ${bars(n.signal)}</button>`).join('') +
+        '<button class="net" type="button" data-other="1"><span class="nname">Other network…<small>Type the name of a hidden network</small></span></button>';
+      list.hidden = false;
+      list.querySelectorAll('[data-net]').forEach(b => b.onclick = () => openJoin(r.networks[+b.dataset.net]));
+      list.querySelector('[data-other]').onclick = () => openJoin(null);
+    } catch (e) { say('Connection lost', true); }
+    finally { $('wifiScanBtn').disabled = !(wifi && wifi.hasWifi); $('wifiScanBtn').textContent = 'Find Wi-Fi networks'; }
+  };
+
+  function openJoin(n) {
+    $('wifiList').hidden = true;
+    $('wifiJoin').hidden = false;
+    $('wjSsid').value = n ? n.ssid : '';
+    $('wjSsid').readOnly = !!n;
+    $('wjSec').value = n ? (n.kind || (n.work ? 'enterprise' : n.secure ? 'wpa' : 'open')) : 'wpa';
+    ['wjIdentity', 'wjPass', 'wjAnon', 'wjDomain', 'wjEap', 'wjPhase2'].forEach(id => $(id).value = '');
+    $('wjShow').checked = false; $('wjPass').type = 'password'; $('wjMore').open = false;
+    $('wjHidden').checked = !n; $('wjHiddenRow').hidden = !!n;
+    secChanged();
+    const sec = $('wjSec').value;
+    (n ? (sec === 'open' ? $('wjGo') : sec === 'enterprise' ? $('wjIdentity') : $('wjPass')) : $('wjSsid')).focus();
+  }
+  function secChanged() {
+    const sec = $('wjSec').value;
+    $('wjIdentityBox').hidden = $('wjMore').hidden = sec !== 'enterprise';
+    $('wjPassBox').hidden = $('wjShowRow').hidden = sec === 'open';
+    $('wjPassLabel').textContent = sec === 'wep' ? 'WEP key' : 'Password';
+  }
+  $('wjSec').onchange = secChanged;
+  $('wjShow').onchange = () => { $('wjPass').type = $('wjShow').checked ? 'text' : 'password'; };
+  $('wjCancel').onclick = () => { $('wifiJoin').hidden = true; };
+
+  $('wjGo').onclick = async () => {
+    const sec = $('wjSec').value, ssid = $('wjSsid').value.trim(), pass = sec === 'open' ? '' : $('wjPass').value;
+    const ent = sec === 'enterprise', identity = ent ? $('wjIdentity').value.trim() : '';
+    if (!ssid) { say('Type the network name', true); return; }
+    if (ent && !identity) { say('Type your user name', true); return; }
+    if (sec !== 'open' && !pass) { say(sec === 'wep' ? 'Type the WEP key' : 'Type the password', true); return; }
+    if ((sec === 'wpa' || sec === 'wpa3') && (pass.length < 8 || pass.length > 63) && !/^[0-9a-f]{64}$/i.test(pass)) { say('Wi-Fi passwords are 8 to 63 characters', true); return; }
+    $('wjGo').disabled = true;
+    try {
+      const msg = { cmd: 'wifiJoin', ssid, security: sec, identity, hidden: $('wjHidden').checked };
+      if (ent) Object.assign(msg, { eap: $('wjEap').value, phase2: $('wjPhase2').value, anonymous: $('wjAnon').value.trim(), domain: $('wjDomain').value.trim() });
+      if (pass) msg.secret = await seal(pass);
+      const r = await request(msg);
+      if (!r.ok) { say('Not saved: ' + (r.msg || r.error), true); if (r.error === 'login') reLogin(); return; }
+      $('wifiJoin').hidden = true;
+      say(r.saved === 'stick' ? 'Saved to ' + r.file + ' — connecting…' : 'Saved on the Pi — connecting…');
+      watchJoin(ssid);
+    } catch (e) { say('Connection lost', true); }
+    finally { $('wjGo').disabled = false; }
+  };
+
+  // Keep checking until the Pi is on the new network (or give up after a minute)
+  function watchJoin(ssid) {
+    clearInterval(wifiWatch);
+    const t0 = Date.now();
+    $('wifiStatus').querySelector('.kv span:last-child').textContent = 'Connecting to “' + ssid + '”…';
+    wifiWatch = setInterval(async () => {
+      if (uploading) return;
+      try {
+        const r = await request({ cmd: 'wifiStatus' });
+        if (!r.ok) return;
+        if (r.wifi.state === 'connected' && r.wifi.ssid === ssid) {
+          clearInterval(wifiWatch); showWifi(r.wifi);
+          say('✓ Connected to ' + ssid + (r.wifi.internet ? '' : ' (but no internet yet)'));
+        } else if (Date.now() - t0 > 60000) {
+          clearInterval(wifiWatch); showWifi(r.wifi);
+          say(`Couldn't join ${ssid} yet — check the password. It's saved, so the Pi keeps trying; tap Forget to remove it.`, true);
+        }
+      } catch (e) { clearInterval(wifiWatch); }
+    }, 3000);
+  }
+
+  async function forget(btn, ssid) {
+    if (btn.dataset.armed !== '1') {
+      btn.dataset.armed = '1'; btn.textContent = 'Tap again';
+      setTimeout(() => { btn.dataset.armed = ''; btn.textContent = 'Forget'; }, 4000);
+      return;
+    }
+    try {
+      const r = await request({ cmd: 'wifiForget', ssid });
+      if (r.ok) { showWifi(r.wifi); say('Forgot ' + ssid); } else say('Could not remove it: ' + (r.msg || r.error), true);
+    } catch (e) { say('Connection lost', true); }
+  }
+
+  wifiT = setInterval(() => {
+    if (rx && !document.hidden && !uploading && !$('vMain').hidden && (Date.now() % 20000 < 5000 || (wifi && wifi.hotspot && wifi.hotspot.active))) loadWifi();
+  }, 5000);
 
   document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh(); });
 
