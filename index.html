@@ -252,7 +252,7 @@
     <div id="wifiSaved" style="margin-top:12px"></div>
     <div id="hsBox">
       <div class="kv"><span>The slideshow's own Wi-Fi</span></div>
-      <div class="row"><label for="keepOn">Keep it on all the time when a USB Wi-Fi adapter is plugged in — use this remote over Wi-Fi at <b>http://10.42.0.1</b></label>
+      <div class="row"><label for="keepOn">Keep it on all the time when a USB Wi-Fi adapter or the network cable is plugged in — use this remote over Wi-Fi at <b>http://10.42.0.1</b></label>
         <label class="switch"><input type="checkbox" id="keepOn"><span></span></label></div>
       <div class="sub" id="keepText" style="margin:2px 0 10px"></div>
       <div id="hsInfo"></div>
@@ -853,7 +853,7 @@
     $('wifiScanBtn').disabled = !w.hasWifi || !!(hs && hs.active && (w.adapters || []).length < 2);
     if (document.activeElement !== $('keepOn')) $('keepOn').checked = !!w.keepOn;
     $('keepText').textContent = !w.keepOn ? '' :
-      !w.usbPresent ? 'Waiting for a USB Wi-Fi adapter. Until one is plugged in, the built-in Wi-Fi works as before: normal Wi-Fi, and fast upload when you ask.' :
+      !w.usbPresent && !w.ethernet ? 'Waiting for a USB Wi-Fi adapter or the network cable. Until one is plugged in, the built-in Wi-Fi works as before: normal Wi-Fi, and fast upload when you ask.' :
       !(hs && hs.active) ? 'Starting…' :
       ((w.adapters || []).length < 2 && !w.ethernet ? 'On. With only the built-in Wi-Fi, the Pi has no internet over Wi-Fi while this is on — plug in a USB Wi-Fi adapter or the network cable for that.' :
         'On — the Pi keeps its internet on the ' + ((w.adapters || []).length > 1 ? 'USB Wi-Fi adapter' : 'network cable') + '.');
