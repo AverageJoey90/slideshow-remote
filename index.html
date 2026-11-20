@@ -89,6 +89,8 @@
   .saved small { display: block; color: var(--dim); font-size: 12px; }
   .saved button { padding: 8px 12px; font-size: 14px; }
   .field select { width: 100%; }
+  .tour { display: flex; align-items: center; gap: 8px; padding: 6px 0; } .tour span:first-child { width: 52px; flex: none; color: var(--dim); }
+  .tour input[type=time] { flex: 1; min-width: 0; width: auto; }
   details.more { margin: 4px 0 10px; } details.more summary { color: var(--acc); cursor: pointer; padding: 6px 0; font-size: 15px; }
   #hsBox { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); }
   #hsInfo .kv b { letter-spacing: .04em; }
@@ -166,10 +168,25 @@
   </div>
 
   <div class="card">
-    <h2>Breaking news banner</h2>
-    <div class="row"><label for="news">Show BBC breaking news</label><label class="switch"><input type="checkbox" id="news" data-key="news"><span></span></label></div>
-    <div class="row"><label for="newsWindow">Show a new top story for (minutes)</label><input type="number" id="newsWindow" min="5" max="240" step="5" data-key="newsWindow"></div>
+    <h2>News banner</h2>
+    <div class="row"><label for="news">Show BBC News banner</label><label class="switch"><input type="checkbox" id="news" data-key="news"><span></span></label></div>
+    <div class="field" style="margin-top:6px"><label for="newsMode">What to show</label>
+      <select id="newsMode" data-key="newsMode"><option value="breaking">Breaking news only (new top story)</option><option value="latest">The latest BBC story, all the time</option></select></div>
+    <div class="row"><label for="newsScale">Banner text size</label><input type="range" id="newsScale" min="50" max="200" step="5" data-key="newsScale"><span class="val" id="newsScaleVal"></span></div>
+    <div class="row" id="newsWindowRow"><label for="newsWindow">Show a new top story for (minutes)</label><input type="number" id="newsWindow" min="5" max="240" step="5" data-key="newsWindow"></div>
     <button class="ghost" id="testBanner" type="button" style="width:100%;margin-top:8px">Test banner (30 seconds)</button>
+  </div>
+
+  <div class="card">
+    <h2>Sleep schedule</h2>
+    <div class="row"><label for="sleepOn">Go to sleep overnight</label><label class="switch"><input type="checkbox" id="sleepOn" data-key="sleepOn"><span></span></label></div>
+    <div class="tour"><span>From</span><input type="time" id="sleepFrom" data-key="sleepFrom"> to <input type="time" id="sleepTo" data-key="sleepTo"></div>
+    <div class="row"><label for="sleepWeekend">Sleep all day Saturday and Sunday</label><label class="switch"><input type="checkbox" id="sleepWeekend" data-key="sleepWeekend"><span></span></label></div>
+    <div class="field" style="margin-top:6px"><label for="sleepMode">While asleep</label>
+      <select id="sleepMode" data-key="sleepMode"><option value="screen">Screen off (Pi stays on, wakes by itself)</option><option value="shutdown">Shut the Pi down (needs a timer plug)</option></select></div>
+    <div class="sub" id="sleepText" style="margin:6px 0 10px"></div>
+    <div class="filebtns"><button class="ghost" id="wakeBtn" type="button">Wake for 1 hour</button><button class="ghost" id="sleepNowBtn" type="button">Sleep now</button></div>
+    <div class="hint">Screen off: slides, radio and banner stop, the screen goes black, the HDMI signal switches off and the TV is told to go to standby (if it supports HDMI-CEC). Shut down: set a timer plug to cut the power about 10 minutes after the start time and switch it back on at the wake time.</div>
   </div>
 
   <div class="card always" id="filesCard">
@@ -201,6 +218,10 @@
   <div class="card always" id="wifiCard">
     <h2>Wi-Fi</h2>
     <div id="wifiStatus"><div class="empty">Checking…</div></div>
+    <div class="field" style="margin-top:10px"><label for="wifiAdapter">Wi-Fi adapter to use</label>
+      <select id="wifiAdapter"><option value="auto">Automatic (USB adapter if plugged in, else built-in)</option>
+        <option value="builtin">The Pi's built-in Wi-Fi</option><option value="usb">USB Wi-Fi adapter</option></select>
+      <div class="sub" id="adapterText" style="margin-top:4px"></div></div>
     <button class="ghost" id="wifiScanBtn" type="button" style="width:100%;margin-top:10px">Find Wi-Fi networks</button>
     <div id="wifiList" hidden></div>
     <div id="wifiJoin" hidden>
@@ -227,13 +248,17 @@
     </div>
     <div id="wifiSaved" style="margin-top:12px"></div>
     <div id="hsBox">
-      <div class="kv"><span>Fast upload over Wi-Fi</span></div>
+      <div class="kv"><span>The slideshow's own Wi-Fi</span></div>
+      <div class="row"><label for="keepOn">Keep it on all the time when a USB Wi-Fi adapter is plugged in — use this remote over Wi-Fi at <b>http://10.42.0.1</b></label>
+        <label class="switch"><input type="checkbox" id="keepOn"><span></span></label></div>
+      <div class="sub" id="keepText" style="margin:2px 0 10px"></div>
       <div id="hsInfo"></div>
       <button class="ghost" id="hsBtn" type="button" style="width:100%">Start fast upload</button>
-      <div class="hint">For big PowerPoints. The slideshow switches its Wi-Fi to a network of its own for a while (same name
+      <div class="hint" id="hsHint">Fast upload, for big PowerPoints: the slideshow switches its Wi-Fi to a network of its own for a while (same name
         and password every time, so your phone joins it by itself after the first time). Upload on the page, then tap
         "I'm finished" — it goes back to its normal Wi-Fi then, or by itself after 10 minutes of nothing happening.
-        Uploads take seconds instead of minutes.</div>
+        Uploads take seconds instead of minutes. With a USB Wi-Fi adapter plugged in, the adapter keeps the internet
+        and the Pi's built-in Wi-Fi does this.</div>
     </div>
     <div class="hint">Networks you join here are saved into <b>wifi.txt</b> on the USB stick, so the slideshow joins them by itself
       next time. With no stick in, the Pi joins and remembers it, and copies it into wifi.txt when a stick is plugged in.
@@ -271,6 +296,16 @@
   $('notePresets').innerHTML = NOTE_PRESETS.map(t => `<option value="${t.replace(/&/g, '&amp;').replace(/"/g, '&quot;')}"></option>`).join('');
 
   let device = null, rx = null, tx = null, dataChar = null, chunk = 20, queue = Promise.resolve();
+  // Opened from the Pi over its own Wi-Fi (http://10.42.0.1) rather than from GitHub over Bluetooth
+  const WIFI_MODE = !!document.querySelector('meta[name="slideshow-transport"][content="wifi"]');
+  const linkUp = () => WIFI_MODE || !!rx;
+  const sid = (() => {
+    try {
+      let v = sessionStorage.getItem('slideshowSid');
+      if (!v) { v = [...crypto.getRandomValues(new Uint8Array(16))].map(b => b.toString(16).padStart(2, '0')).join(''); sessionStorage.setItem('slideshowSid', v); }
+      return v;
+    } catch (e) { return [...crypto.getRandomValues(new Uint8Array(16))].map(b => b.toString(16).padStart(2, '0')).join(''); }
+  })();
   let uploading = null, files = [], delArmed = 0;
   let nonce = null, creds = null, state = {}, cfg = null, pending = {}, sendT = null, pollT = null, wantConnected = false;
 
@@ -293,6 +328,12 @@
   }
   const request = msg => exclusive(() => send(msg));
   async function send(msg) {
+    if (WIFI_MODE) {
+      const r = await fetch('/api/remote', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Session': sid },
+        body: JSON.stringify(msg), cache: 'no-store' });
+      if (!r.ok && r.status !== 200) throw new Error('slideshow not reachable');
+      return r.json();
+    }
     if (!rx || !tx) throw new Error('not connected');
     const data = enc.encode(JSON.stringify(msg) + '\n');
     for (let i = 0; i < data.length; i += chunk) {
@@ -388,7 +429,7 @@
   }
 
   async function refresh() {
-    if (!rx || document.hidden || uploading) return;
+    if (!linkUp() || document.hidden || uploading) return;
     try {
       const r = await request({ cmd: 'get' });
       if (r.ok) showState(r); else if (r.error === 'login') reLogin();
@@ -420,6 +461,12 @@
   }
 
   $('disconnectBtn').onclick = () => {
+    if (WIFI_MODE) {           // over Wi-Fi: sign out of this browser
+      const c = loadCreds(); delete c.pass; saveCreds(c);
+      try { sessionStorage.removeItem('slideshowSid'); } catch (e) {}
+      location.reload();
+      return;
+    }
     wantConnected = false;
     clearInterval(pollT);
     try { device && device.gatt.disconnect(); } catch (e) {}
@@ -445,6 +492,10 @@
     $('slideText').textContent = !r.running ? '' : !r.total ? 'Loading…' : !r.slide ? `No slides showing right now (all ${r.total} switched off by their notes)`
       : `Slide ${r.slide} of ${r.total}` + (r.showing < r.total ? ` · ${r.showing} showing` : '') + (r.playing ? '' : ' · paused');
     $('playBtn').textContent = r.playing ? 'Pause' : 'Play';
+    const sOn = r.settings && r.settings.sleepOn;
+    $('sleepText').textContent = !r.running ? '' : r.asleep ? 'Asleep now.' :
+      r.wakeUntil > Date.now() ? 'Woken until ' + pad(new Date(r.wakeUntil).getHours()) + ':' + pad(new Date(r.wakeUntil).getMinutes()) + '.' :
+      sOn ? 'Awake — next sleep at ' + r.settings.sleepFrom + '.' : 'Sleep schedule is off.';
     $('radioOn').checked = !!r.radio;
 
     const left = r.pairing || 0;
@@ -464,6 +515,9 @@
     $('volumeVal').textContent = cfg.volume;
     $('clockScaleVal').textContent = cfg.clockScale + '%';
     $('noteScaleVal').textContent = cfg.noteScale + '%';
+    $('newsScaleVal').textContent = (cfg.newsScale || 100) + '%';
+    if (!cfg.newsScale) $('newsScale').value = 100;
+    $('newsWindowRow').hidden = cfg.newsMode === 'latest';
     renderNotes();
   }
 
@@ -487,13 +541,13 @@
 
   document.querySelectorAll('[data-key]').forEach(el => {
     const key = el.dataset.key;
-    const read = () => el.type === 'checkbox' ? el.checked : Number(el.value);
+    const read = () => el.type === 'checkbox' ? el.checked : (el.tagName === 'SELECT' || el.type === 'time') ? el.value : Number(el.value);
     if (el.type === 'range') {
       el.addEventListener('input', () => {
         $(el.id + 'Val').textContent = el.value + (key === 'volume' ? '' : '%');
         change(key, read());
       });
-    } else el.addEventListener('change', () => change(key, read()));
+    } else el.addEventListener('change', () => { if (el.type !== 'time' || el.value) change(key, read()); if (key === 'newsMode') $('newsWindowRow').hidden = el.value === 'latest'; });
   });
 
   function renderNotes() {
@@ -533,6 +587,8 @@
   $('playBtn').onclick = () => { const play = !state.playing; $('playBtn').textContent = play ? 'Pause' : 'Play'; state.playing = play; action(play ? 'play' : 'pause'); };
   $('radioOn').onchange = () => action($('radioOn').checked ? 'radioOn' : 'radioOff');
   $('testBanner').onclick = () => { action('testBanner'); say('Banner showing for 30 seconds'); };
+  $('wakeBtn').onclick = () => { action('wake', { minutes: 60 }); say('Waking the slideshow for 1 hour'); };
+  $('sleepNowBtn').onclick = () => { action('sleepNow'); say('Going to sleep — tap "Wake for 1 hour" to wake it'); };
 
   $('pairBtn').onclick = async () => {
     try {
@@ -566,8 +622,8 @@
       </div>`).join('');
     list.querySelectorAll('input[type=checkbox]').forEach(cb => cb.onchange = updateDelBtn);
     list.querySelectorAll('[data-show]').forEach(b => b.onclick = () => showFile(files[+b.dataset.show]));
-    $('uploadBtn').disabled = !r.stick || !dataChar || !!uploading;
-    if (!dataChar) $('uploadBtn').textContent = 'Upload needs the latest Pi software';
+    $('uploadBtn').disabled = !r.stick || !(dataChar || WIFI_MODE) || !!uploading;
+    if (!dataChar && !WIFI_MODE) $('uploadBtn').textContent = 'Upload needs the latest Pi software';
     updateDelBtn();
   }
 
@@ -614,6 +670,7 @@
   $('uploadInput').onchange = () => {
     const f = $('uploadInput').files[0];
     if (!f) return;
+    if (WIFI_MODE) { uploadWifi(f); return; }
     if (f.size > 3 * 1048576 && wifi && wifi.hasWifi) {
       bigFile = f;
       $('bigText').innerHTML = `<b>${esc(f.name)}</b> is ${mb(f.size)} — over Bluetooth that's roughly ${Math.max(2, Math.round(f.size / 1048576 * 2))} minutes. Fast upload over Wi-Fi takes seconds.`;
@@ -648,6 +705,34 @@
 
   // Upload: packets of [4-byte position][file bytes] on the data characteristic; every few packets
   // ask the Pi how much it has, and carry on from there (so anything lost is simply sent again).
+  function uploadWifi(file) {
+    if (!/\.pptx$/i.test(file.name)) { say('Only PowerPoint (.pptx) files can be uploaded', true); return; }
+    if (uploading) return;
+    uploading = { cancel: false };
+    $('upBox').hidden = false; $('upName').textContent = file.name; $('upBar').style.width = '0%'; $('upText').textContent = 'Starting…';
+    renderFiles({ stick: true, files });
+    const x = new XMLHttpRequest(), t0 = Date.now();
+    x.open('POST', '/api/upload');
+    x.setRequestHeader('X-Name', encodeURIComponent(file.name));
+    x.setRequestHeader('X-Session', sid);
+    x.upload.onprogress = e => {
+      if (!e.lengthComputable) return;
+      const p = Math.floor(e.loaded * 100 / e.total), secs = (Date.now() - t0) / 1000;
+      $('upBar').style.width = p + '%';
+      $('upText').textContent = `${p}% · ${mb(e.loaded)} of ${mb(e.total)}` + (secs > 1 ? ` · ${mb(e.loaded / secs)}/s` : '');
+      if (uploading && uploading.cancel) x.abort();
+    };
+    const done = r => {
+      uploading = null; $('upBox').hidden = true; updateDelBtn();
+      if (r.ok) { say('✓ ' + r.name + ' uploaded — it\'s showing now'); renderFiles({ stick: true, files: r.files }); setTimeout(refresh, 5000); }
+      else { say('Upload failed: ' + (r.msg || 'connection lost'), true); renderFiles({ stick: true, files }); }
+    };
+    x.onload = () => { let r = {}; try { r = JSON.parse(x.responseText); } catch (e) {} done(r.ok ? r : { ok: false, msg: r.msg || 'upload failed' }); };
+    x.onerror = () => done({ ok: false, msg: 'connection lost' });
+    x.onabort = () => { uploading = null; $('upBox').hidden = true; say('Upload cancelled'); renderFiles({ stick: true, files }); };
+    x.send(file);
+  }
+
   async function upload(file) {
     if (!/\.pptx$/i.test(file.name)) { say('Only PowerPoint (.pptx) files can be uploaded', true); return; }
     if (uploading) return;
@@ -709,7 +794,7 @@
       try { wake && wake.release(); } catch (e) {}
       uploading = null;
       $('upBox').hidden = true;
-      $('uploadBtn').disabled = !dataChar;
+      $('uploadBtn').disabled = !(dataChar || WIFI_MODE);
       updateDelBtn();
     }
   }
@@ -749,7 +834,11 @@
     wifi = w;
     const state = !w.hasWifi ? ['No Wi-Fi on this Pi', 'bad'] : w.state === 'connected' ? [`Connected to “${esc(w.ssid)}” ${bars(w.signal)}`, 'good']
       : w.state === 'connecting' ? ['Connecting…', ''] : w.state === 'unavailable' ? ['Switched off', 'bad'] : ['Not connected', 'bad'];
-    $('wifiStatus').innerHTML = kv('Wi-Fi', state[0], state[1]) + (w.ip ? kv('Address', esc(w.ip)) : '') +
+    if (document.activeElement !== $('wifiAdapter')) $('wifiAdapter').value = w.choice || 'auto';
+    $('adapterText').textContent = !w.adapters || !w.adapters.length ? '' :
+      'Plugged in: ' + w.adapters.map(a => a.name + (a.hotspot ? ' (the slideshow\'s own Wi-Fi)' : '')).join(', ') +
+      (w.choice === 'usb' && !w.adapters.some(a => a.kind === 'usb') ? ' — no USB adapter found, using the built-in one' : '');
+    $('wifiStatus').innerHTML = kv('Wi-Fi', state[0], state[1]) + (w.adapter && w.state === 'connected' ? kv('Using', esc(w.adapter)) : '') + (w.ip ? kv('Address', esc(w.ip)) : '') +
       kv('Ethernet cable', w.ethernet ? 'Connected' : 'Not connected', w.ethernet ? 'good' : '') +
       kv('Internet', w.internet ? 'Yes' : 'No', w.internet ? 'good' : 'bad') +
       kv('Clock on screen', w.clock ? 'Showing' : 'Hidden (no internet)', w.clock ? 'good' : 'bad');
@@ -758,8 +847,22 @@
         <button class="ghost danger" data-forget="${i}" type="button">Forget</button></div>`).join('');
     $('wifiSaved').querySelectorAll('[data-forget]').forEach(b => b.onclick = () => forget(b, w.saved[+b.dataset.forget].ssid));
     const hs = w.hotspot;
-    $('wifiScanBtn').disabled = !w.hasWifi || !!(hs && hs.active);
-    if (hs && hs.active) {
+    $('wifiScanBtn').disabled = !w.hasWifi || !!(hs && hs.active && (w.adapters || []).length < 2);
+    if (document.activeElement !== $('keepOn')) $('keepOn').checked = !!w.keepOn;
+    $('keepText').textContent = !w.keepOn ? '' :
+      !w.usbPresent ? 'Waiting for a USB Wi-Fi adapter. Until one is plugged in, the built-in Wi-Fi works as before: normal Wi-Fi, and fast upload when you ask.' :
+      !(hs && hs.active) ? 'Starting…' :
+      ((w.adapters || []).length < 2 && !w.ethernet ? 'On. With only the built-in Wi-Fi, the Pi has no internet over Wi-Fi while this is on — plug in a USB Wi-Fi adapter or the network cable for that.' :
+        'On — the Pi keeps its internet on the ' + ((w.adapters || []).length > 1 ? 'USB Wi-Fi adapter' : 'network cable') + '.');
+    if (hs && hs.active && hs.persistent) {
+      $('wifiStatus').querySelector('.kv span:last-child').innerHTML = w.state === 'connected' && w.ssid
+        ? $('wifiStatus').querySelector('.kv span:last-child').innerHTML : `Its own Wi-Fi “${esc(hs.ssid)}” only`;
+      $('hsInfo').innerHTML = kv('Wi-Fi to join', '<b>' + esc(hs.ssid) + '</b>') + kv('Password', '<b>' + esc(hs.password) + '</b>') +
+        (WIFI_MODE ? '<div class="hint" style="margin-top:2px">You\'re using the remote over this Wi-Fi now.</div>' :
+          '<div class="hint" style="margin-top:2px">Join that Wi-Fi (once, with <b>Auto-Join</b> on) and open <b>http://10.42.0.1</b> in any browser — Safari, Chrome, a computer — for this remote without Bluetooth. Bookmark it. Uploads that way take seconds.</div>' +
+          `<a class="btnlink" href="${esc(hs.remoteUrl || 'http://10.42.0.1/')}" target="_blank" rel="noopener">Open the remote over Wi-Fi</a>`);
+      $('hsBtn').hidden = true; $('hsHint').hidden = true;
+    } else if (hs && hs.active) {
       $('wifiStatus').querySelector('.kv span:last-child').innerHTML = `Fast upload — its own Wi-Fi “${esc(hs.ssid)}”`;
       $('hsInfo').innerHTML = kv('Wi-Fi to join', '<b>' + esc(hs.ssid) + '</b>') + kv('Password', '<b>' + esc(hs.password) + '</b>') +
         '<div class="hint" style="margin-top:2px">First time only: in your phone\'s Settings → Wi-Fi, join <b>' + esc(hs.ssid) +
@@ -777,10 +880,36 @@
       $('hsInfo').innerHTML = '';
       $('hsBtn').textContent = 'Start fast upload';
     }
+    if (!(hs && hs.active && hs.persistent)) { $('hsBtn').hidden = WIFI_MODE; $('hsHint').hidden = WIFI_MODE; }
     $('hsBtn').disabled = !w.hasWifi || (!w.stick && !(hs && hs.active));
     $('fastBtn').textContent = hs && hs.active ? '⚡ Fast upload is on — show how to connect' : '⚡ Fast upload over Wi-Fi (big files)';
-    $('fastBtn').hidden = !w.hasWifi;
+    $('fastBtn').hidden = !w.hasWifi || WIFI_MODE || !!(hs && hs.persistent);
   }
+
+  $('wifiAdapter').onchange = async () => {
+    try {
+      const r = await request({ cmd: 'wifiAdapter', choice: $('wifiAdapter').value });
+      if (r.ok) { showWifi(r.wifi); say('✓ Wi-Fi adapter changed — reconnecting'); setTimeout(loadWifi, 8000); }
+      else say(r.msg || r.error, true);
+    } catch (e) { say('Connection lost', true); }
+  };
+
+  // Keep the slideshow's own Wi-Fi on (asks twice before switching off when this page uses it)
+  $('keepOn').onchange = async () => {
+    const on = $('keepOn').checked;
+    if (!on && WIFI_MODE && $('keepOn').dataset.armed !== '1') {
+      $('keepOn').checked = true; $('keepOn').dataset.armed = '1';
+      say('This page uses that Wi-Fi — switch off again to confirm (the remote will then need Bluetooth)', true);
+      setTimeout(() => { $('keepOn').dataset.armed = ''; }, 6000);
+      return;
+    }
+    $('keepOn').dataset.armed = '';
+    try {
+      const r = await request({ cmd: 'wifiRemote', on });
+      if (r.ok) { showWifi(r.wifi); say(on ? '✓ The slideshow\'s own Wi-Fi stays on' : 'The slideshow\'s own Wi-Fi is off'); setTimeout(loadWifi, 6000); }
+      else { say(r.msg || r.error, true); $('keepOn').checked = !on; }
+    } catch (e) { if (!on && WIFI_MODE) say('Switched off — this page will lose its connection'); else say('Connection lost', true); }
+  };
 
   $('hsBtn').onclick = async () => {
     const on = wifi && wifi.hotspot && wifi.hotspot.active;
@@ -890,12 +1019,32 @@
   }
 
   wifiT = setInterval(() => {
-    if (rx && !document.hidden && !uploading && !$('vMain').hidden && (Date.now() % 20000 < 5000 || (wifi && wifi.hotspot && wifi.hotspot.active))) loadWifi();
+    if (linkUp() && !document.hidden && !uploading && !$('vMain').hidden && (Date.now() % 20000 < 5000 || (wifi && wifi.hotspot && wifi.hotspot.active && !wifi.hotspot.persistent))) loadWifi();
   }, 5000);
 
   document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh(); });
 
-  if (!navigator.bluetooth) { $('connectBtn').disabled = true; $('noBt').hidden = false; }
+  if (WIFI_MODE) {
+    // Over the slideshow's own Wi-Fi: no Bluetooth step — straight to the log-in
+    $('disconnectBtn').textContent = 'Sign out';
+    (async () => {
+      try {
+        const h = await request({ cmd: 'hello' });
+        nonce = h.nonce;
+        $('btName').textContent = h.name || 'Slideshow';
+        conn('Connected over Wi-Fi', 'on');
+        const saved = loadCreds();
+        $('user').value = saved.user || 'joe'; $('pass').value = saved.pass || ''; $('remember').checked = !!saved.pass;
+        if (saved.pass) { try { started(await login(saved.user, saved.pass)); creds = saved; return; } catch (e) { /* ask */ } }
+        view('vLogin');
+      } catch (e) {
+        conn('Not connected'); view('vConnect');
+        $('connectBtn').hidden = true;
+        $('noBt').hidden = false;
+        $('noBt').innerHTML = 'Can\'t reach the slideshow. Is this phone or computer on the slideshow\'s Wi-Fi? Then reload this page.';
+      }
+    })();
+  } else if (!navigator.bluetooth) { $('connectBtn').disabled = true; $('noBt').hidden = false; }
 })();
 </script>
 </body>
