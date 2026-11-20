@@ -107,13 +107,16 @@
 <!-- Connect -->
 <section id="vConnect">
   <div class="card center">
-    <p style="margin-top:0">Stand near the slideshow screen, make sure Bluetooth is on, then connect.</p>
-    <button class="big" id="connectBtn" type="button">Connect to the slideshow</button>
+    <p style="margin-top:0">Stand near the slideshow screen, then choose how to connect.</p>
+    <button class="big" id="connectBtn" type="button">Connect via Bluetooth</button>
     <div class="hint" id="noBt" hidden>
       This browser can't use Bluetooth.<br>
-      <b>iPhone / iPad:</b> open this page in the free <b>Bluefy</b> app (App Store).<br>
+      <b>iPhone / iPad:</b> open this page in the free <b>Bluefy</b> app (App Store) — or use Wi-Fi below.<br>
       <b>Android:</b> open it in <b>Chrome</b>.
     </div>
+    <a class="btnlink" id="wifiLink" href="http://10.42.0.1/" style="margin-top:14px">Connect via Wi-Fi</a>
+    <div class="hint" id="wifiHint">First join the slideshow's own Wi-Fi (<b>Slideshow-Upload</b>) in your phone's or computer's
+      Wi-Fi settings — it's on while fast upload is running, or all the time if you've switched that on. Works in any browser.</div>
   </div>
 </section>
 
@@ -1027,6 +1030,7 @@
   if (WIFI_MODE) {
     // Over the slideshow's own Wi-Fi: no Bluetooth step — straight to the log-in
     $('disconnectBtn').textContent = 'Sign out';
+    $('wifiLink').hidden = true; $('wifiHint').hidden = true;
     (async () => {
       try {
         const h = await request({ cmd: 'hello' });
