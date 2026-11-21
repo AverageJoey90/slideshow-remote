@@ -62,6 +62,11 @@
   .file .fname { flex: 1; min-width: 0; }
   .file .fname b { display: block; word-break: break-word; font-weight: 600; }
   .file .fname span { color: var(--dim); font-size: 13px; }
+  .health { display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: center; font-size: 13px; color: var(--dim);
+    background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 8px 12px; margin-bottom: 12px; }
+  .health b { color: var(--text); font-weight: 600; }
+  .health .ok { color: #4cd964; } .health .warm { color: #ffd23f; } .health .hot, .health .warn2 { color: #ff6b6b; }
+  .health .warn2 { flex-basis: 100%; }
   .file .dl { flex: none; padding: 8px 11px; }
   .file .badge { background: #1d4b2e; color: #7ff0ae; font-size: 12px; font-weight: 700; padding: 4px 9px; border-radius: 99px; flex: none; }
   .file button { padding: 8px 12px; font-size: 14px; flex: none; }
@@ -135,6 +140,7 @@
 <!-- Remote -->
 <section id="vMain" hidden>
   <div class="warn" id="notRunning" hidden></div>
+  <div class="health" id="piHealth" hidden></div>
 
   <div class="card">
     <div class="now" id="pptxName">—</div>
@@ -551,6 +557,17 @@
       .forEach(el => el.disabled = !r.running);
 
     $('pptxName').textContent = r.name || (r.running ? 'Slideshow' : '—');
+    // Raspberry Pi temperature / CPU / memory (from the Pi itself — works even if the slideshow isn't running)
+    const h = r.pi;
+    $('piHealth').hidden = !h || (h.temp == null && h.cpu == null);
+    if (h) {
+      const tc = h.temp == null ? '' : h.temp >= 80 ? 'hot' : h.temp >= 70 ? 'warm' : 'ok';
+      $('piHealth').innerHTML = '<span>Raspberry Pi</span>' +
+        (h.temp != null ? `<b class="${tc}">${Math.round(h.temp)}°C</b>` : '') +
+        (h.cpu != null ? `<span>CPU <b>${h.cpu}%</b></span>` : '') +
+        (h.mem != null ? `<span>Memory <b>${h.mem}%</b></span>` : '') +
+        (h.throttled && h.throttled.length ? `<span class="warn2">⚠ ${esc(h.throttled.join(', '))}</span>` : '');
+    }
     $('slideText').textContent = !r.running ? '' : !r.total ? 'Loading…' : !r.slide ? `No slides showing right now (all ${r.total} switched off by their notes)`
       : `Slide ${r.slide} of ${r.total}` + (r.showing < r.total ? ` · ${r.showing} showing` : '') + (r.playing ? '' : ' · paused');
     $('playBtn').textContent = r.playing ? 'Pause' : 'Play';
