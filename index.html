@@ -62,6 +62,7 @@
   .file .fname { flex: 1; min-width: 0; }
   .file .fname b { display: block; word-break: break-word; font-weight: 600; }
   .file .fname span { color: var(--dim); font-size: 13px; }
+  .file .dl { flex: none; padding: 8px 11px; }
   .file .badge { background: #1d4b2e; color: #7ff0ae; font-size: 12px; font-weight: 700; padding: 4px 9px; border-radius: 99px; flex: none; }
   .file button { padding: 8px 12px; font-size: 14px; flex: none; }
   .filebtns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 10px 0; }
@@ -194,7 +195,7 @@
   </div>
 
   <div class="card always" id="filesCard">
-    <h2>PowerPoints on the USB stick</h2>
+    <h2>PowerPoints saved on the slideshow</h2>
     <div id="fileList"><div class="empty">Loading…</div></div>
     <div class="filebtns">
       <button class="ghost danger" id="delBtn" type="button" disabled>Delete selected</button>
@@ -214,7 +215,16 @@
       <div class="sub" id="upText"></div>
       <button class="ghost" id="upCancel" type="button" style="width:100%;margin-top:10px">Cancel upload</button>
     </div>
-    <div class="hint">The newest PowerPoint is the one that shows — tap <b>Show</b> to switch to another.
+    <div id="dlBox" hidden>
+      <div id="dlName" style="font-weight:600;word-break:break-word"></div>
+      <div class="bar"><i id="dlBar"></i></div>
+      <div class="sub" id="dlText"></div>
+      <button class="big" id="dlSave" type="button" hidden>Save to this phone</button>
+      <button class="ghost" id="dlCancel" type="button" style="width:100%;margin-top:10px">Cancel download</button>
+    </div>
+    <div class="hint">These are kept on the slideshow itself (the <b>PowerPoint Files</b> folder on its SD card). A USB stick
+      plugged into the slideshow has its PowerPoints copied in here, then the stick can come out.
+      The newest PowerPoint is the one that shows — tap <b>Show</b> to switch to another, <b>⬇</b> to download a copy.
       Uploading goes over Bluetooth, so it's slow (roughly 1–3 minutes per MB): keep this app open and the
       phone unlocked until it finishes. Shrink big files first (PowerPoint: File → Compress Pictures).</div>
   </div>
@@ -264,8 +274,8 @@
         Uploads take seconds instead of minutes. With a USB Wi-Fi adapter plugged in, the adapter keeps the internet
         and the Pi's built-in Wi-Fi does this.</div>
     </div>
-    <div class="hint">Networks you join here are saved into <b>wifi.txt</b> on the USB stick, so the slideshow joins them by itself
-      next time. With no stick in, the Pi joins and remembers it, and copies it into wifi.txt when a stick is plugged in.
+    <div class="hint">Networks you join here are saved on the slideshow (its <b>wifi.txt</b>), so it joins them by itself
+      next time. A <b>wifi.txt</b> on a USB stick plugged into the slideshow is added to it too.
       The Wi-Fi password is sent encrypted.</div>
   </div>
 
@@ -274,7 +284,7 @@
     <div id="pairText">Pair your Android phone or Windows laptop with the slideshow once, then send it .pptx files.</div>
     <button class="ghost" id="pairBtn" type="button" style="width:100%;margin-top:10px">Open pairing for 2 minutes</button>
     <div class="hint">While pairing is open, pair with <b id="btName">Slideshow</b> in your phone's or laptop's Bluetooth settings, and check the number on the screen matches.
-      Then share/send the PowerPoint to it by Bluetooth. It's saved onto the USB stick and starts playing.
+      Then share/send the PowerPoint to it by Bluetooth. It's saved on the slideshow and starts playing.
       (iPhones can't send files to non-Apple devices.)</div>
   </div>
 
@@ -533,8 +543,8 @@
     const nr = $('notRunning');
     if (!r.running) {
       nr.hidden = false;
-      nr.textContent = !r.stick ? 'No USB stick in the slideshow — plug it in to change settings.'
-        : !r.pptx ? 'There\'s no PowerPoint on the USB stick. You can send one by Bluetooth (below).'
+      nr.textContent = !r.page ? 'The slideshow web page isn\'t on the Pi yet — plug in a USB stick with it on, or run the installer again.'
+        : !r.pptx ? 'There\'s no PowerPoint saved on the slideshow yet. Upload one below, or plug in a USB stick with one on it.'
         : 'The slideshow isn\'t running yet — give it a few seconds.';
     } else nr.hidden = true;
     document.querySelectorAll('#vMain .card:not(.always) button, #vMain .card:not(.always) input, #vMain .card:not(.always) select')
@@ -548,6 +558,13 @@
     $('sleepText').textContent = !r.running ? '' : r.asleep ? 'Asleep now.' :
       r.wakeUntil > Date.now() ? 'Woken until ' + pad(new Date(r.wakeUntil).getHours()) + ':' + pad(new Date(r.wakeUntil).getMinutes()) + '.' :
       sOn ? 'Awake — next sleep at ' + r.settings.sleepFrom + '.' : 'Sleep schedule is off.';
+    if (sOn && r.running) {
+      const mm = t => { const x = /^(\d\d):(\d\d)$/.exec(t || ''); return x ? +x[1] * 60 + +x[2] : null; };
+      const a = mm(r.settings.sleepFrom), b = mm(r.settings.sleepTo), len = a === null || b === null ? 0 : (b - a + 1440) % 1440;
+      const warn = a === 720 || b === 720 ? '12:00 is midday — for midnight use 00:00.' :
+        len > 14 * 60 ? 'That sleeps for ' + Math.floor(len / 60) + ' hours a day — check the times.' : '';
+      if (warn) $('sleepText').textContent += ' ⚠ ' + warn;
+    }
     $('radioOn').checked = !!r.radio;
 
     const left = r.pairing || 0;
@@ -650,7 +667,7 @@
     } catch (e) { say('Connection lost', true); }
   };
 
-  // ---------- PowerPoints on the USB stick ----------
+  // ---------- PowerPoints saved on the slideshow (its SD card) ----------
   const esc = t => String(t).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[ch]);
   const mb = n => n >= 1048576 ? (n / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB';
   const when = ms => { const d = new Date(ms); return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes()); };
@@ -665,16 +682,17 @@
   function renderFiles(r) {
     files = r.files || [];
     const list = $('fileList');
-    if (!r.stick) list.innerHTML = '<div class="empty">No USB stick in the slideshow.</div>';
-    else if (!files.length) list.innerHTML = '<div class="empty">No PowerPoints on the USB stick yet — upload one below.</div>';
+    if (!files.length) list.innerHTML = '<div class="empty">No PowerPoints saved on the slideshow yet — upload one below, or plug in a USB stick with one on it.</div>';
     else list.innerHTML = files.map((f, i) => `<div class="file">
         <input type="checkbox" data-i="${i}" aria-label="Select ${esc(f.name)}">
         <div class="fname"><b>${esc(f.name)}</b><span>${mb(f.size)} · ${when(f.mtime)}</span></div>
         ${f.showing ? '<span class="badge">Showing</span>' : `<button class="ghost" data-show="${i}" type="button">Show</button>`}
+        <button class="ghost dl" data-dl="${i}" type="button" aria-label="Download ${esc(f.name)}" title="Download">⬇</button>
       </div>`).join('');
     list.querySelectorAll('input[type=checkbox]').forEach(cb => cb.onchange = updateDelBtn);
     list.querySelectorAll('[data-show]').forEach(b => b.onclick = () => showFile(files[+b.dataset.show]));
-    $('uploadBtn').disabled = !r.stick || !(dataChar || WIFI_MODE) || !!uploading;
+    list.querySelectorAll('[data-dl]').forEach(b => b.onclick = () => downloadFile(files[+b.dataset.dl], b));
+    $('uploadBtn').disabled = !(dataChar || WIFI_MODE) || !!uploading;
     if (!dataChar && !WIFI_MODE) $('uploadBtn').textContent = 'Upload needs the latest Pi software';
     updateDelBtn();
   }
@@ -706,6 +724,87 @@
       setTimeout(refresh, 4000);
     } catch (e) { say('Connection lost', true); }
   };
+
+  // ---------- Download a PowerPoint to this phone / computer ----------
+  // Over the slideshow's Wi-Fi it's an ordinary (fast) download. Over Bluetooth it comes in small pieces,
+  // which is slow (roughly 1–2 minutes per MB), so big files ask for a second tap first.
+  let downloading = null, dlArmed = null;
+  function downloadFile(f, btn) {
+    if (downloading) { say('A download is already running', true); return; }
+    if (WIFI_MODE) {
+      const a = document.createElement('a');
+      a.href = '/api/download?name=' + encodeURIComponent(f.name) + '&s=' + encodeURIComponent(sid);
+      a.download = f.name;
+      document.body.appendChild(a); a.click(); a.remove();
+      say('Downloading ' + f.name + '…');
+      return;
+    }
+    const mins = Math.max(1, Math.round(f.size / 8000 / 60));
+    if (f.size > 1048576 && dlArmed !== f.name) {
+      dlArmed = f.name;
+      btn.textContent = 'Sure?';
+      say(`${f.name} is ${mb(f.size)} — about ${mins} minute${mins === 1 ? '' : 's'} over Bluetooth. Tap ⬇ again to start, or use ⚡ Fast upload over Wi-Fi to download it in seconds.`);
+      setTimeout(() => { if (dlArmed === f.name) { dlArmed = null; btn.textContent = '⬇'; } }, 8000);
+      return;
+    }
+    dlArmed = null;
+    btn.textContent = '⬇';
+    bleDownload(f);
+  }
+
+  async function bleDownload(f) {
+    const job = downloading = { cancel: false };
+    $('dlBox').hidden = false; $('dlSave').hidden = true; $('dlCancel').hidden = false;
+    $('dlName').textContent = f.name; $('dlBar').style.width = '0%'; $('dlText').textContent = 'Starting…';
+    const parts = []; let off = 0, size = f.size, mtime = f.mtime;
+    const t0 = Date.now();
+    try {
+      while (off < size || off === 0) {
+        if (job.cancel) throw new Error('cancelled');
+        const r = await request({ cmd: 'dlChunk', name: f.name, off, len: 9000 });
+        if (!r.ok) throw new Error(r.msg || r.error || 'the slideshow said no');
+        if (off === 0) { size = r.size; mtime = r.mtime; }
+        else if (r.size !== size || r.mtime !== mtime) throw new Error('the file changed on the slideshow — try again');
+        const bin = atob(r.data), bytes = new Uint8Array(bin.length);
+        for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+        if (!bytes.length) break;
+        parts.push(bytes); off += bytes.length;
+        const pct = size ? off / size : 1, secs = (Date.now() - t0) / 1000;
+        $('dlBar').style.width = (pct * 100).toFixed(1) + '%';
+        const left = pct > 0.02 ? Math.round(secs / pct - secs) : null;
+        $('dlText').textContent = `${mb(off)} of ${mb(size)}` + (left !== null ? ` · about ${left >= 90 ? Math.round(left / 60) + ' min' : left + ' s'} left` : '');
+      }
+      const file = new File(parts, f.name, { type: 'application/vnd.openxmlformats-officedocument.presentationml.presentation' });
+      $('dlText').textContent = '✓ Downloaded ' + mb(file.size) + ' — tap below to save it';
+      $('dlCancel').hidden = true;
+      $('dlSave').hidden = false;
+      $('dlSave').onclick = () => saveFile(file);     // (a fresh tap — phones only allow saving straight after one)
+      downloading = null;
+    } catch (e) {
+      downloading = null;
+      $('dlBox').hidden = true;
+      say(e.message === 'cancelled' ? 'Download cancelled' : 'Download failed: ' + e.message, e.message !== 'cancelled');
+    }
+  }
+  $('dlCancel').onclick = () => { if (downloading) downloading.cancel = true; };
+
+  async function saveFile(file) {
+    try {
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {     // iPhone: share sheet → Save to Files
+        await navigator.share({ files: [file] });
+      } else {
+        const url = URL.createObjectURL(file), a = document.createElement('a');
+        a.href = url; a.download = file.name;
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 60000);
+      }
+      $('dlBox').hidden = true;
+      say('✓ Saved ' + file.name);
+    } catch (e) {
+      if (e && e.name === 'AbortError') return;        // closed the share sheet — they can tap Save again
+      say('Couldn\'t save it: ' + (e.message || e), true);
+    }
+  }
 
   async function showFile(f) {
     try {
@@ -830,7 +929,7 @@
             if (s.done) break;
           }
         }
-        $('upText').textContent = 'Checking and saving to the USB stick…';
+        $('upText').textContent = 'Checking and saving on the slideshow…';
         return send({ cmd: 'upEnd', sha256: sha });
       });
       if (result.ok) {
@@ -894,7 +993,7 @@
       kv('Internet', w.internet ? 'Yes' : 'No', w.internet ? 'good' : 'bad') +
       kv('Clock on screen', w.clock ? 'Showing' : 'Hidden (no internet)', w.clock ? 'good' : 'bad');
     $('wifiSaved').innerHTML = !w.saved.length ? '' : '<div class="kv"><span>Saved networks (first in range is used)</span></div>' +
-      w.saved.map((n, i) => `<div class="saved"><div>${esc(n.ssid)}<small>${n.where === 'stick' ? 'in wifi.txt on the USB stick' : 'on the Pi — goes into wifi.txt when the stick is plugged in'}${n.kind && n.kind !== 'wpa' ? ' · ' + KIND[n.kind] : ''}</small></div>
+      w.saved.map((n, i) => `<div class="saved"><div>${esc(n.ssid)}<small>${n.where === 'stick' ? 'saved on the slideshow' : 'saved on the slideshow'}${n.kind && n.kind !== 'wpa' ? ' · ' + KIND[n.kind] : ''}</small></div>
         <button class="ghost danger" data-forget="${i}" type="button">Forget</button></div>`).join('');
     $('wifiSaved').querySelectorAll('[data-forget]').forEach(b => b.onclick = () => forget(b, w.saved[+b.dataset.forget].ssid));
     const hs = w.hotspot;
@@ -1030,7 +1129,7 @@
       const r = await request(msg);
       if (!r.ok) { say('Not saved: ' + (r.msg || r.error), true); if (r.error === 'login') reLogin(); return; }
       $('wifiJoin').hidden = true;
-      say(r.saved === 'stick' ? 'Saved to ' + r.file + ' — connecting…' : 'Saved on the Pi — connecting…');
+      say('Saved on the slideshow — connecting…');
       watchJoin(ssid);
     } catch (e) { say('Connection lost', true); }
     finally { $('wjGo').disabled = false; }
