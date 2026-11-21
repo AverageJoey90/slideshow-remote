@@ -171,6 +171,7 @@
     <div class="row"><label for="clock">Show clock</label><label class="switch"><input type="checkbox" id="clock" data-key="clock"><span></span></label></div>
     <div class="row"><label for="clockScale">Clock size</label><input type="range" id="clockScale" min="50" max="250" step="5" data-key="clockScale"><span class="val" id="clockScaleVal"></span></div>
     <div class="row"><label for="noteScale">Note size</label><input type="range" id="noteScale" min="50" max="250" step="5" data-key="noteScale"><span class="val" id="noteScaleVal"></span></div>
+    <div class="row"><label for="qrScale">QR code size</label><input type="range" id="qrScale" min="50" max="250" step="5" data-key="qrScale"><span class="val" id="qrScaleVal"></span></div>
     <div class="row"><label for="noteLead">Show notes this many minutes before</label><input type="number" id="noteLead" min="1" max="1440" data-key="noteLead"></div>
     <div class="row"><label for="noteAfter">Keep notes showing this many minutes after</label><input type="number" id="noteAfter" min="0" max="240" data-key="noteAfter"></div>
     <div id="noteList" style="margin-top:10px"></div>
@@ -601,6 +602,8 @@
     $('volumeVal').textContent = cfg.volume;
     $('clockScaleVal').textContent = cfg.clockScale + '%';
     $('noteScaleVal').textContent = cfg.noteScale + '%';
+    $('qrScaleVal').textContent = (cfg.qrScale || 100) + '%';
+    if (!cfg.qrScale) $('qrScale').value = 100;
     $('newsScaleVal').textContent = (cfg.newsScale || 100) + '%';
     if (!cfg.newsScale) $('newsScale').value = 100;
     $('newsWindowRow').hidden = cfg.newsMode === 'latest';
