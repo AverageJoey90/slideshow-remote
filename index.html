@@ -194,6 +194,7 @@
     <div class="row"><label for="sleepOn">Go to sleep overnight</label><label class="switch"><input type="checkbox" id="sleepOn" data-key="sleepOn"><span></span></label></div>
     <div class="tour"><span>From</span><input type="time" id="sleepFrom" data-key="sleepFrom"> to <input type="time" id="sleepTo" data-key="sleepTo"></div>
     <div class="row"><label for="sleepWeekend">Sleep all day Saturday and Sunday</label><label class="switch"><input type="checkbox" id="sleepWeekend" data-key="sleepWeekend"><span></span></label></div>
+    <div class="row"><label for="sleepNotice">Show a notice 10 minutes before it sleeps and wakes</label><label class="switch"><input type="checkbox" id="sleepNotice" data-key="sleepNotice"><span></span></label></div>
     <div class="field" style="margin-top:6px"><label for="sleepMode">While asleep</label>
       <select id="sleepMode" data-key="sleepMode"><option value="screen">Screen off (Pi stays on, wakes by itself)</option><option value="shutdown">Shut the Pi down (needs a timer plug)</option></select></div>
     <div class="sub" id="sleepText" style="margin:6px 0 10px"></div>
@@ -603,6 +604,7 @@
     $('clockScaleVal').textContent = cfg.clockScale + '%';
     $('noteScaleVal').textContent = cfg.noteScale + '%';
     $('qrScaleVal').textContent = (cfg.qrScale || 100) + '%';
+    $('sleepNotice').checked = cfg.sleepNotice !== false;      // (on unless switched off)
     if (!cfg.qrScale) $('qrScale').value = 100;
     $('newsScaleVal').textContent = (cfg.newsScale || 100) + '%';
     if (!cfg.newsScale) $('newsScale').value = 100;
