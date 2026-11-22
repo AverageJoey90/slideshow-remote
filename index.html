@@ -17,6 +17,8 @@
   #conn { font-size: 13px; color: var(--dim); display: flex; align-items: center; gap: 6px; }
   #conn i { width: 9px; height: 9px; border-radius: 50%; background: #556; display: inline-block; }
   #conn.on i { background: var(--ok); } #conn.busy i { background: #f5c04a; }
+  #conn.bad i { background: #ff5b5b; } #conn.bad { color: #ff8a8a; }
+  body.lost #vMain { opacity: .5; transition: opacity .3s; }   /* the details shown are out of date until it reconnects */
   .card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 16px; margin-bottom: 12px; }
   .card h2 { font-size: 15px; margin: 0 0 12px; color: var(--dim); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
   button { font: inherit; border: 0; border-radius: 12px; padding: 12px 16px; background: var(--acc); color: #fff; font-weight: 600; cursor: pointer; }
@@ -384,6 +386,16 @@
     clearTimeout(msgT); msgT = setTimeout(() => m.className = '', err ? 5000 : 2500);
   }
   function conn(text, cls) { $('connText').textContent = text; $('conn').className = cls || ''; }
+  // Over Wi-Fi: show straight away when the slideshow stops answering, and when it comes back
+  let wifiUp = null;
+  function wifiLink(up) {
+    if (!WIFI_MODE || up === wifiUp) return;
+    const was = wifiUp; wifiUp = up;
+    conn(up ? 'Connected over Wi-Fi' : 'Wi-Fi lost — retrying…', up ? 'on' : 'bad');
+    document.body.classList.toggle('lost', !up);
+    if (!up) say('Can\'t reach the slideshow — is this phone still on its Wi-Fi? Retrying…', true);
+    else if (was === false) say('✓ Connected again');
+  }
   function view(name) {
     ['vConnect', 'vLogin', 'vMain'].forEach(v => $(v).hidden = v !== name);
     if (name !== 'vMain' && $('logView')) { $('logView').hidden = true; document.body.style.overflow = ''; }
@@ -400,9 +412,20 @@
   const request = msg => exclusive(() => send(msg));
   async function send(msg) {
     if (WIFI_MODE) {
-      const r = await fetch('/api/remote', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Session': sid },
-        body: JSON.stringify(msg), cache: 'no-store' });
-      if (!r.ok && r.status !== 200) throw new Error('slideshow not reachable');
+      // A dropped Wi-Fi can leave a request hanging for minutes, so give up after a few seconds
+      // (longer for downloads, which send bigger pieces)
+      const stop = new AbortController(), t = setTimeout(() => stop.abort(), msg.cmd === 'dlChunk' ? 30000 : 8000);
+      let r;
+      try {
+        r = await fetch('/api/remote', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Session': sid },
+          body: JSON.stringify(msg), cache: 'no-store', signal: stop.signal });
+      } catch (e) {
+        wifiLink(false);
+        throw new Error('slideshow not reachable');
+      } finally { clearTimeout(t); }
+      wifiLink(true);                                         // any answer means the Pi is there
+      if (r.status === 401) return { ok: false, error: 'login' };
+      if (!r.ok) throw new Error('slideshow error ' + r.status);
       return r.json();
     }
     if (!rx || !tx) throw new Error('not connected');
@@ -552,7 +575,7 @@
     try {
       const r = await request({ cmd: 'get' });
       if (r.ok) showState(r); else if (r.error === 'login') reLogin();
-    } catch (e) { /* link dropped — handled by the disconnect event */ }
+    } catch (e) { /* Bluetooth: handled by the disconnect event · Wi-Fi: shown by wifiLink(), retried on the next check */ }
   }
 
   async function reLogin() {
@@ -1320,7 +1343,7 @@
         const h = await request({ cmd: 'hello' });
         nonce = h.nonce;
         $('btName').textContent = h.name || 'Slideshow';
-        conn('Connected over Wi-Fi', 'on');
+        wifiLink(true);
         const saved = loadCreds();
         $('user').value = saved.user || 'joe'; $('pass').value = saved.pass || ''; $('remember').checked = !!saved.pass;
         if (saved.pass) { try { started(await login(saved.user, saved.pass)); creds = saved; return; } catch (e) { /* ask */ } }
