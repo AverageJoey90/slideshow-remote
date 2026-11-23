@@ -554,9 +554,15 @@
     }
   };
 
+  // One log-in at a time (Enter + a tap, or a double tap, used to send two — the second used up the
+  // same one-time code and showed "Wrong user name or password" even though the first had worked)
+  let loggingIn = false;
   $('loginBtn').onclick = async () => {
-    const user = $('user').value.trim(), pass = $('pass').value;
+    if (loggingIn) return;
+    const user = $('user').value.trim(), pass = $('pass').value, btn = $('loginBtn'), was = btn.textContent;
+    loggingIn = true; btn.disabled = true; btn.textContent = 'Logging in…';
     try {
+      if (!nonce) nonce = (await request({ cmd: 'hello' })).nonce;     // (the Pi's one-time code, if not here yet)
       const r = await login(user, pass);
       creds = { user, pass };
       saveCreds($('remember').checked ? creds : { user });
@@ -564,7 +570,7 @@
     } catch (e) {
       const r = e.reply || {};
       say(r.error === 'locked' ? `Too many wrong attempts — try again in ${r.wait} seconds` : r.error === 'login' ? 'Wrong user name or password' : 'Could not log in: ' + e.message, true);
-    }
+    } finally { loggingIn = false; btn.disabled = false; btn.textContent = was; }
   };
   $('pass').addEventListener('keydown', e => { if (e.key === 'Enter') $('loginBtn').click(); });
 
