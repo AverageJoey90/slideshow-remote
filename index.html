@@ -162,7 +162,8 @@
 
 <!-- Remote -->
 <section id="vMain" hidden>
-  <div class="warn" id="notRunning" hidden></div>
+  <div class="warn" id="notRunning" hidden><span id="nrText"></span>
+    <button class="ghost" id="restartScreen" type="button" hidden style="display:block;width:100%;margin-top:10px">Restart the slideshow screen</button></div>
   <div class="health" id="piHealth" hidden></div>
 
   <div class="card">
@@ -387,9 +388,13 @@
   }
   function conn(text, cls) { $('connText').textContent = text; $('conn').className = cls || ''; }
   // Over Wi-Fi: show straight away when the slideshow stops answering, and when it comes back
-  let wifiUp = null;
+  const READ_ONLY = new Set(['get', 'files', 'wifiStatus', 'log', 'hello']);
+  let wifiUp = null, wifiMisses = 0;
   function wifiLink(up) {
-    if (!WIFI_MODE || up === wifiUp) return;
+    if (!WIFI_MODE) return;
+    // Only call it lost after two checks in a row get no answer (~6+ seconds) — one miss is normal on a phone
+    if (up) wifiMisses = 0; else if (++wifiMisses < 2 && wifiUp !== null) return;
+    if (up === wifiUp) return;
     const was = wifiUp; wifiUp = up;
     conn(up ? 'Connected over Wi-Fi' : 'Wi-Fi lost — retrying…', up ? 'on' : 'bad');
     document.body.classList.toggle('lost', !up);
@@ -414,15 +419,20 @@
     if (WIFI_MODE) {
       // A dropped Wi-Fi can leave a request hanging for minutes, so give up after a few seconds
       // (longer for downloads, which send bigger pieces)
-      const stop = new AbortController(), t = setTimeout(() => stop.abort(), msg.cmd === 'dlChunk' ? 30000 : 8000);
+      // Checks that only read (not "next slide" etc.) are quietly tried again once — phones often miss
+      // one request when the screen wakes up or the Wi-Fi briefly re-tunes
+      const tries = READ_ONLY.has(msg.cmd) ? 2 : 1;
       let r;
-      try {
-        r = await fetch('/api/remote', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Session': sid },
-          body: JSON.stringify(msg), cache: 'no-store', signal: stop.signal });
-      } catch (e) {
-        wifiLink(false);
-        throw new Error('slideshow not reachable');
-      } finally { clearTimeout(t); }
+      for (let i = 0; i < tries && !r; i++) {
+        const stop = new AbortController(), t = setTimeout(() => stop.abort(), msg.cmd === 'dlChunk' ? 30000 : 10000);
+        try {
+          r = await fetch('/api/remote', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Session': sid },
+            body: JSON.stringify(msg), cache: 'no-store', signal: stop.signal });
+        } catch (e) {
+          if (i + 1 < tries) await sleep(800);
+        } finally { clearTimeout(t); }
+      }
+      if (!r) { wifiLink(false); throw new Error('slideshow not reachable'); }
       wifiLink(true);                                         // any answer means the Pi is there
       if (r.status === 401) return { ok: false, error: 'login' };
       if (!r.ok) throw new Error('slideshow error ' + r.status);
@@ -618,15 +628,31 @@
   // ---------- showing what the slideshow is doing ----------
   const editing = () => document.activeElement && document.activeElement.closest && document.activeElement.closest('#vMain input, #vMain select');
 
+  let notRunningSince = 0;
+  $('restartScreen').onclick = async () => {
+    $('restartScreen').disabled = true;
+    try {
+      const r = await request({ cmd: 'restartScreen' });
+      say(r.ok ? 'Restarting the slideshow screen — it will be back in about 30 seconds' : 'Couldn\'t restart it: ' + (r.msg || r.error), !r.ok);
+      notRunningSince = Date.now();
+    } catch (e) { say('Couldn\'t restart it: ' + e.message, true); }
+    finally { $('restartScreen').disabled = false; }
+  };
   function showState(r) {
     state = r;
     const nr = $('notRunning');
+    // Page and PowerPoint there but the screen not answering for a while → it's frozen: offer a restart
+    const stuck = !r.running && r.page && r.pptx;
+    if (!stuck) notRunningSince = 0; else if (!notRunningSince) notRunningSince = Date.now();
+    const frozen = stuck && Date.now() - notRunningSince > 30000;
     if (!r.running) {
       nr.hidden = false;
-      nr.textContent = !r.page ? 'The slideshow web page isn\'t on the Pi yet — plug in a USB stick with it on, or run the installer again.'
+      $('nrText').textContent = !r.page ? 'The slideshow web page isn\'t on the Pi yet — plug in a USB stick with it on, or run the installer again.'
         : !r.pptx ? 'There\'s no PowerPoint saved on the slideshow yet. Upload one below, or plug in a USB stick with one on it.'
+        : frozen ? 'The slideshow screen isn\'t responding. The Pi restarts it by itself after about 1½ minutes, or you can restart it now.'
         : 'The slideshow isn\'t running yet — give it a few seconds.';
     } else nr.hidden = true;
+    $('restartScreen').hidden = !frozen;
     document.querySelectorAll('#vMain .card:not(.always) button, #vMain .card:not(.always) input, #vMain .card:not(.always) select')
       .forEach(el => el.disabled = !r.running);
 
