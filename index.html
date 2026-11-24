@@ -51,9 +51,16 @@
   .note .line { display: flex; gap: 8px; } .note select { flex: 1; min-width: 0; }
   .note .del { background: #3a2230; color: #ffb4b4; padding: 10px 14px; }
   .hint { color: var(--dim); font-size: 13px; margin-top: 10px; }
-  #msg { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(env(safe-area-inset-bottom) + 18px); background: #26314a;
-    padding: 10px 18px; border-radius: 999px; font-size: 14px; box-shadow: 0 6px 20px rgba(0,0,0,.4); display: none; max-width: 92vw; text-align: center; }
-  #msg.show { display: block; } #msg.err { background: #5a2430; }
+  /* Messages: a banner the same shape and width as the big buttons — red for problems, green for done */
+  #msg { position: fixed; left: 14px; right: 14px; margin: 0 auto; max-width: 532px;
+    bottom: calc(env(safe-area-inset-bottom) + 16px); z-index: 80;
+    background: #2a4a7a; border: 1px solid rgba(255,255,255,.14); color: #fff;
+    padding: 18px 18px; border-radius: 12px; font-size: 17px; font-weight: 600; line-height: 1.35;
+    text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,.5); display: none; cursor: pointer; }
+  #msg.show { display: block; animation: msgIn .18s ease-out; }
+  #msg.ok { background: #1f6b43; }
+  #msg.err { background: #b3261e; }
+  @keyframes msgIn { from { transform: translateY(12px); opacity: 0; } to { transform: none; opacity: 1; } }
   .warn { background: #3b2a12; border: 1px solid #6b4a1a; color: #ffd89a; border-radius: 12px; padding: 12px; margin-bottom: 12px; font-size: 14px; }
   [hidden] { display: none !important; }
   .center { text-align: center; }
@@ -77,6 +84,9 @@
   #upBox { background: #0f1522; border: 1px solid var(--line); border-radius: 12px; padding: 12px; margin-top: 10px; }
   #upBox .bar { height: 10px; border-radius: 99px; background: #26314a; overflow: hidden; margin: 8px 0; }
   #upBox .bar i { display: block; height: 100%; width: 0; background: var(--acc); transition: width .3s; }
+  .admin-warn { margin-top: 14px; padding: 12px 14px; border-radius: 12px; background: rgba(245,166,35,.12);
+    border: 1px solid rgba(245,166,35,.55); color: #ffd28a; font-size: 14px; line-height: 1.45; }
+  .admin-warn b { display: block; color: #ffb840; font-size: 15px; margin-bottom: 4px; letter-spacing: .02em; }
   .empty { color: var(--dim); font-size: 14px; padding: 6px 0; }
   /* ---- log viewer ---- */
   #logView { position: fixed; inset: 0; z-index: 60; background: var(--bg, #0b0f17); display: flex; flex-direction: column; }
@@ -257,8 +267,22 @@
     <div class="hint">These are kept on the slideshow itself (the <b>PowerPoint Files</b> folder on its SD card). A USB stick
       plugged into the slideshow has its PowerPoints copied in here, then the stick can come out.
       The newest PowerPoint is the one that shows — tap <b>Show</b> to switch to another, <b>⬇</b> to download a copy.
-      Uploading goes over Bluetooth, so it's slow (roughly 1–3 minutes per MB): keep this app open and the
-      phone unlocked until it finishes. Shrink big files first (PowerPoint: File → Compress Pictures).</div>
+      <span id="btUpHint">Uploading goes over Bluetooth, so it's slow (roughly 1–3 minutes per MB): keep this app open and the
+      phone unlocked until it finishes. Shrink big files first (PowerPoint: File → Compress Pictures).</span></div>
+  </div>
+
+  <div class="card always" id="updCard">
+    <h2>Software update</h2>
+    <!-- Software update: "Upload Update File" → (uploaded) → "Install Update" → installs and restarts the Pi -->
+    <button class="ghost big" id="updBtn" type="button" disabled>Upload Update File</button>
+    <div class="sub" id="updText" style="margin-top:6px"></div>
+    <button class="ghost" id="updOther" type="button" hidden style="width:100%;margin-top:6px;font-size:14px">Upload a different update file</button>
+    <input type="file" id="updInput" accept=".zip,application/zip,application/x-zip-compressed" hidden>
+    <div class="admin-warn">
+      <b>⚠ Administrator tool</b>
+      Only for the person who looks after the slideshow. Installing an update stops the slideshow for a few
+      minutes and restarts the Pi. Use the pi-slideshow .zip you were given — only newer versions are accepted.
+    </div>
   </div>
 
   <div class="card always" id="wifiCard">
@@ -383,9 +407,13 @@
   // ---------- messages ----------
   let msgT;
   function say(text, err) {
-    const m = $('msg'); m.textContent = text; m.className = 'show' + (err ? ' err' : '');
-    clearTimeout(msgT); msgT = setTimeout(() => m.className = '', err ? 5000 : 2500);
+    const m = $('msg'); m.textContent = text;
+    m.className = 'show' + (err ? ' err' : /^✓/.test(text) ? ' ok' : '');
+    // Long enough to read (longer messages stay up longer); tap it to close sooner
+    const secs = Math.min(12, Math.max(err ? 5 : 3, text.length / 14));
+    clearTimeout(msgT); msgT = setTimeout(() => m.className = '', secs * 1000);
   }
+  $('msg').onclick = () => { clearTimeout(msgT); $('msg').className = ''; };
   function conn(text, cls) { $('connText').textContent = text; $('conn').className = cls || ''; }
   // Over Wi-Fi: show straight away when the slideshow stops answering, and when it comes back
   const READ_ONLY = new Set(['get', 'files', 'wifiStatus', 'log', 'hello']);
@@ -646,6 +674,7 @@
   };
   function showState(r) {
     state = r;
+    showUpdate(r.update || null);
     const nr = $('notRunning');
     // Page and PowerPoint there but the screen not answering for a while → it's frozen: offer a restart
     const stuck = !r.running && r.page && r.pptx;
@@ -1049,7 +1078,7 @@
   // Upload: packets of [4-byte position][file bytes] on the data characteristic; every few packets
   // ask the Pi how much it has, and carry on from there (so anything lost is simply sent again).
   function uploadWifi(file) {
-    if (!/\.pptx$/i.test(file.name)) { say('Only PowerPoint (.pptx) files can be uploaded', true); return; }
+    if (!/\.(pptx|zip)$/i.test(file.name)) { say('Only PowerPoint (.pptx) files, or the slideshow update (.zip), can be uploaded', true); return; }
     if (uploading) return;
     uploading = { cancel: false };
     $('upBox').hidden = false; $('upName').textContent = file.name; $('upBar').style.width = '0%'; $('upText').textContent = 'Starting…';
@@ -1067,8 +1096,9 @@
     };
     const done = r => {
       uploading = null; $('upBox').hidden = true; updateDelBtn();
-      if (r.ok) { say('✓ ' + r.name + ' uploaded — it\'s showing now'); renderFiles({ stick: true, files: r.files }); setTimeout(refresh, 5000); }
-      else { say('Upload failed: ' + (r.msg || 'connection lost'), true); renderFiles({ stick: true, files }); }
+      if (r.ok && r.update) { updUploaded(r.update); renderFiles({ stick: true, files }); }
+      else if (r.ok) { say('✓ ' + r.name + ' uploaded — it\'s showing now'); renderFiles({ stick: true, files: r.files }); setTimeout(refresh, 5000); }
+      else { say(/\.zip$/i.test(file.name) && r.msg ? r.msg : 'Upload failed: ' + (r.msg || 'connection lost'), true); renderFiles({ stick: true, files }); }
     };
     x.onload = () => { let r = {}; try { r = JSON.parse(x.responseText); } catch (e) {} done(r.ok ? r : { ok: false, msg: r.msg || 'upload failed' }); };
     x.onerror = () => done({ ok: false, msg: 'connection lost' });
@@ -1077,7 +1107,7 @@
   }
 
   async function upload(file) {
-    if (!/\.pptx$/i.test(file.name)) { say('Only PowerPoint (.pptx) files can be uploaded', true); return; }
+    if (!/\.(pptx|zip)$/i.test(file.name)) { say('Only PowerPoint (.pptx) files, or the slideshow update (.zip), can be uploaded', true); return; }
     if (uploading) return;
     uploading = { cancel: false };
     let wake = null;
@@ -1124,13 +1154,16 @@
         $('upText').textContent = 'Checking and saving on the slideshow…';
         return send({ cmd: 'upEnd', sha256: sha });
       });
-      if (result.ok) {
+      if (result.ok && result.update) {
+        $('upBar').style.width = '100%';
+        updUploaded(result.update);
+      } else if (result.ok) {
         $('upBar').style.width = '100%';
         say('✓ ' + result.name + ' uploaded — it\'s showing now');
         renderFiles(result);
         setTimeout(refresh, 5000);
       } else if (result.cancelled) say('Upload cancelled');
-      else say('Upload failed: ' + (result.msg || result.error), true);
+      else say(result.error === 'update' ? result.msg : 'Upload failed: ' + (result.msg || result.error), true);
     } catch (e) {
       say('Upload stopped — the Bluetooth connection was lost. Try again closer to the screen.', true);
     } finally {
@@ -1141,6 +1174,59 @@
       updateDelBtn();
     }
   }
+
+  // ---------- software update ----------
+  // One button: "Upload Update File" → once an update is waiting on the Pi, "Install Update" →
+  // "Installing…" (the Pi installs it, then restarts into the slideshow and this remote reconnects).
+  let upd = null, updWasInstalling = false;
+  function showUpdate(u) {
+    upd = u;
+    const b = $('updBtn'), t = $('updText');
+    $('updOther').hidden = true;
+    t.style.color = '';
+    if (!u) {        // the Pi's software is from before updates could be sent from the remote
+      b.textContent = 'Upload Update File'; b.disabled = true; b.className = 'ghost big';
+      t.textContent = 'Updates from the remote need the new Pi software — install it by hand once (sudo bash …/install.sh).';
+      return;
+    }
+    if (updWasInstalling && !u.installing && !u.ready && !u.error) say('✓ The slideshow has been updated to ' + (u.installed || 'the new version'));
+    updWasInstalling = !!u.installing;
+    if (u.installing) {
+      b.textContent = 'Installing update…'; b.disabled = true; b.className = 'big';
+      t.textContent = 'Installing ' + (u.version || 'the update') + ' — the Pi restarts into the slideshow when it\'s done (a few minutes). This page reconnects by itself.';
+    } else if (u.ready) {
+      b.textContent = 'Install Update' + (u.version ? ' (' + u.version + ')' : ''); b.disabled = !linkUp(); b.className = 'big';
+      t.textContent = (u.installed ? 'Installed now: ' + u.installed + '. ' : '') + (u.source ? 'From ' + u.source + '.' : '');
+      $('updOther').hidden = false;
+    } else {
+      b.textContent = 'Upload Update File'; b.disabled = !linkUp() || !!uploading; b.className = 'ghost big';
+      t.textContent = u.installed ? 'Installed version: ' + u.installed : '';
+    }
+    if (u.error) { t.textContent = '⚠ ' + u.error; t.style.color = '#ff8a8a'; }
+  }
+  function updUploaded(u) {
+    showUpdate(u);
+    say('✓ Update ' + (u.version || '') + ' uploaded — press Install Update when you\'re ready');
+  }
+  function pickUpdate() { $('updInput').value = ''; $('updInput').click(); }
+  $('updOther').onclick = pickUpdate;
+  $('updInput').onchange = () => {
+    const f = $('updInput').files[0];
+    if (!f) return;
+    if (!/\.zip$/i.test(f.name)) return say('Choose the slideshow update — the pi-slideshow .zip file', true);
+    if (WIFI_MODE) uploadWifi(f); else upload(f);
+  };
+  $('updBtn').onclick = async () => {
+    if (!upd || !upd.ready) return pickUpdate();
+    if (!confirm('Install slideshow update ' + (upd.version || '') + ' now?\n\nThe slideshow stops for a few minutes, then the Pi restarts into it.')) return;
+    $('updBtn').disabled = true;
+    try {
+      const r = await request({ cmd: 'installUpdate' });
+      if (r.ok) { showUpdate(r.update); say('Installing the update — the slideshow will restart'); }
+      else { say(r.msg || r.error, true); if (r.update) showUpdate(r.update); }
+    } catch (e) { say('Couldn\'t start the install: ' + e.message, true); }
+    finally { if (upd && !upd.installing) $('updBtn').disabled = false; }
+  };
 
   // ---------- Wi-Fi ----------
   let wifi = null, wifiWatch = null;
@@ -1369,6 +1455,7 @@
   if (WIFI_MODE) {
     // Over the slideshow's own Wi-Fi: no Bluetooth step — straight to the log-in
     $('disconnectBtn').textContent = 'Sign out';
+    $('btUpHint').textContent = 'Uploading over the slideshow\'s Wi-Fi is quick — keep this page open until it finishes.';
     $('wifiLink').hidden = true; $('wifiHint').hidden = true;
     (async () => {
       try {
