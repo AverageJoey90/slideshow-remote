@@ -107,6 +107,9 @@
   .lg-row .m { grid-column: 2; grid-row: 1; word-break: break-word; }
   .lg-row.bad .m { color: #ff8a8a; }
   .lg-row.bad .t::before { content: "⚠ "; color: #ff6b6b; }
+  .lg-row.warn .m { color: #ffd36b; }
+  .lg-row.warn .t::before { content: "⚡ "; color: #ffc940; }
+  .lg-row .unsure { color: var(--dim); font-size: 12px; }
   .lg-bottom { display: flex; gap: 8px; padding: 10px 14px calc(10px + env(safe-area-inset-bottom)); border-top: 1px solid var(--line); }
   .lg-bottom button { flex: 1; padding: 12px 6px; font-size: 15px; }
   .kv { display: flex; justify-content: space-between; gap: 12px; padding: 6px 0; font-size: 15px; }
@@ -206,6 +209,7 @@
     <div class="row"><label for="clockScale">Clock size</label><input type="range" id="clockScale" min="50" max="250" step="5" data-key="clockScale"><span class="val" id="clockScaleVal"></span></div>
     <div class="row"><label for="noteScale">Note size</label><input type="range" id="noteScale" min="50" max="250" step="5" data-key="noteScale"><span class="val" id="noteScaleVal"></span></div>
     <div class="row"><label for="qrScale">QR code size</label><input type="range" id="qrScale" min="50" max="250" step="5" data-key="qrScale"><span class="val" id="qrScaleVal"></span></div>
+    <div class="row"><label for="countdownScale">Countdown size</label><input type="range" id="countdownScale" min="50" max="250" step="5" data-key="countdownScale"><span class="val" id="countdownScaleVal"></span></div>
     <div class="row"><label for="noteLead">Show notes this many minutes before</label><input type="number" id="noteLead" min="1" max="1440" data-key="noteLead"></div>
     <div class="row"><label for="noteAfter">Keep notes showing this many minutes after</label><input type="number" id="noteAfter" min="0" max="240" data-key="noteAfter"></div>
     <div id="noteList" style="margin-top:10px"></div>
@@ -684,7 +688,7 @@
       nr.hidden = false;
       $('nrText').textContent = !r.page ? 'The slideshow web page isn\'t on the Pi yet — plug in a USB stick with it on, or run the installer again.'
         : !r.pptx ? 'There\'s no PowerPoint saved on the slideshow yet. Upload one below, or plug in a USB stick with one on it.'
-        : frozen ? 'The slideshow screen isn\'t responding. The Pi restarts it by itself after about 1½ minutes, or you can restart it now.'
+        : frozen ? 'The slideshow screen isn\'t responding. The Pi restarts it by itself within a minute, or you can restart it now.'
         : 'The slideshow isn\'t running yet — give it a few seconds.';
     } else nr.hidden = true;
     $('restartScreen').hidden = !frozen;
@@ -743,6 +747,8 @@
     $('qrScaleVal').textContent = (cfg.qrScale || 100) + '%';
     $('sleepNotice').checked = cfg.sleepNotice !== false;      // (on unless switched off)
     if (!cfg.qrScale) $('qrScale').value = 100;
+    $('countdownScaleVal').textContent = (cfg.countdownScale || 100) + '%';
+    if (!cfg.countdownScale) $('countdownScale').value = 100;
     $('newsScaleVal').textContent = (cfg.newsScale || 100) + '%';
     if (!cfg.newsScale) $('newsScale').value = 100;
     $('newsWindowRow').hidden = cfg.newsMode === 'latest';
@@ -968,7 +974,8 @@
       lgEntries.forEach(e => {
         const d = (e.t || '').slice(0, 10);
         if (d !== last) { html += `<div class="lg-day">${esc(lgDayName(e.t))}</div>`; last = d; }
-        html += `<div class="lg-row${e.level === 'problem' ? ' bad' : ''}"><span class="t">${esc((e.t || '').slice(11, 16))}</span>` +
+        html += `<div class="lg-row${e.level === 'problem' ? ' bad' : e.level === 'warning' ? ' warn' : ''}"><span class="t">${esc((e.t || '').slice(11, 16))}` +
+          (e.unsure ? ' <span class="unsure" title="Written before the Pi\'s clock was set — the time may be wrong">⏱</span>' : '') + `</span>` +
           `<span class="m">${esc(e.msg)}</span><span class="a">${esc(e.area)}</span></div>`;
       });
       box.innerHTML = html;
