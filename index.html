@@ -215,6 +215,8 @@
     <h2>Clock &amp; notes</h2>
     <div class="row"><label for="clock">Show clock</label><label class="switch"><input type="checkbox" id="clock" data-key="clock"><span></span></label></div>
     <div class="row"><label for="clockScale">Clock size</label><input type="range" id="clockScale" min="50" max="250" step="5" data-key="clockScale"><span class="val" id="clockScaleVal"></span></div>
+    <div class="row"><label for="weather">Show weather (Bristol)</label><label class="switch"><input type="checkbox" id="weather" data-key="weather"><span></span></label></div>
+    <div class="row"><label for="weatherScale">Weather size</label><input type="range" id="weatherScale" min="50" max="250" step="5" data-key="weatherScale"><span class="val" id="weatherScaleVal"></span></div>
     <div class="row"><label for="noteScale">Note size</label><input type="range" id="noteScale" min="50" max="250" step="5" data-key="noteScale"><span class="val" id="noteScaleVal"></span></div>
     <div class="row"><label for="qrScale">QR code size</label><input type="range" id="qrScale" min="50" max="250" step="5" data-key="qrScale"><span class="val" id="qrScaleVal"></span></div>
     <div class="row"><label for="countdownScale">Countdown size</label><input type="range" id="countdownScale" min="50" max="250" step="5" data-key="countdownScale"><span class="val" id="countdownScaleVal"></span></div>
@@ -773,6 +775,9 @@
     $('qrScaleVal').textContent = (cfg.qrScale || 100) + '%';
     $('sleepNotice').checked = cfg.sleepNotice !== false;      // (on unless switched off)
     if (!cfg.qrScale) $('qrScale').value = 100;
+    $('weatherScaleVal').textContent = (cfg.weatherScale || 100) + '%';
+    if (!cfg.weatherScale) $('weatherScale').value = 100;
+    $('weather').checked = cfg.weather !== false;              // (on unless switched off)
     $('countdownScaleVal').textContent = (cfg.countdownScale || 100) + '%';
     if (!cfg.countdownScale) $('countdownScale').value = 100;
     $('newsScaleVal').textContent = (cfg.newsScale || 100) + '%';
