@@ -51,6 +51,14 @@
   .note .line { display: flex; gap: 8px; } .note select { flex: 1; min-width: 0; }
   .note .del { background: #3a2230; color: #ffb4b4; padding: 10px 14px; }
   .hint { color: var(--dim); font-size: 13px; margin-top: 10px; }
+  .bt-src { display: flex; align-items: center; gap: 10px; background: #0f1522; border: 1px solid var(--line);
+    border-radius: 12px; padding: 10px 12px; margin: 4px 0 10px; }
+  .bt-src .ic { flex: none; width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center;
+    background: rgba(76,157,255,.15); color: var(--acc); font-size: 18px; }
+  .bt-src.usb .ic { background: rgba(76,217,138,.15); color: var(--ok); }
+  .bt-src.none .ic { background: rgba(255,107,107,.15); color: var(--bad); }
+  .bt-src b { display: block; font-size: 15px; }
+  .bt-src small { color: var(--dim); font-size: 13px; }
   /* Messages: a banner the same shape and width as the big buttons — red for problems, green for done */
   #msg { position: fixed; left: 14px; right: 14px; margin: 0 auto; max-width: 532px;
     bottom: calc(env(safe-area-inset-bottom) + 16px); z-index: 80;
@@ -341,6 +349,8 @@
 
   <div class="card pairbox always">
     <h2>Send a PowerPoint by Bluetooth</h2>
+    <div class="bt-src" id="btSrc" hidden><span class="ic" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7l10 10-5 5V2l5 5L7 17"/></svg></span>
+      <div><small id="btSrcLabel">Bluetooth is coming from</small><b id="btSrcName"></b><small id="btSrcNote"></small></div></div>
     <div id="pairText">Pair your Android phone or Windows laptop with the slideshow once, then send it .pptx files.</div>
     <button class="ghost" id="pairBtn" type="button" style="width:100%;margin-top:10px">Open pairing for 2 minutes</button>
     <div class="hint">While pairing is open, pair with <b id="btName">Slideshow</b> in your phone's or laptop's Bluetooth settings, and check the number on the screen matches.
@@ -731,9 +741,25 @@
     $('pairText').textContent = left ? `Pairing is open for ${Math.floor(left / 60)}:${pad(left % 60)}.` :
       'Pair your Android phone or Windows laptop with the slideshow once, then send it .pptx files.';
     $('pairBtn').textContent = left ? 'Close pairing' : 'Open pairing for 2 minutes';
+    drawBtSource(r.bluetooth);
 
     // Settings: don't overwrite something being typed, or a change that hasn't been sent yet
     if (r.settings && !editing() && !Object.keys(pending).length) { cfg = JSON.parse(JSON.stringify(r.settings)); fillSettings(); }
+  }
+
+  // Which Bluetooth the slideshow is broadcasting from: a USB dongle (used first) or the Pi's built-in one
+  function drawBtSource(list) {
+    const box = $('btSrc');
+    if (!Array.isArray(list)) { box.hidden = true; return; }       // (older slideshow software: says nothing)
+    const used = list.find(a => a.on && !a.standby), spare = list.find(a => a.standby);
+    box.hidden = false;
+    $('btSrcLabel').textContent = used ? 'Bluetooth is coming from' : 'Bluetooth';
+    box.className = 'bt-src' + (!used ? ' none' : used.kind === 'USB' ? ' usb' : '');
+    $('btSrcName').textContent = !used ? 'No Bluetooth found' :
+      used.kind === 'USB' ? 'USB Bluetooth adapter' : 'The Pi\'s built-in Bluetooth';
+    $('btSrcNote').textContent = !used ? (list.length ? 'Bluetooth is switched off on the Pi.' : 'Plug in a USB Bluetooth adapter.') :
+      used.kind === 'USB' ? (spare ? 'Built-in Bluetooth switched off while it\'s plugged in.' : 'Better range than the built-in one.') :
+      'Plug in a USB Bluetooth adapter for better range — it\'s used instead automatically.';
   }
 
   function fillSettings() {
