@@ -572,11 +572,12 @@
   }
 
   let keyNonce = null;
-  async function login(user, pass) {
+  async function login(user, pass, again) {
     const used = nonce;
     const r = await request({ cmd: 'auth', user, mac: await hmacHex(pass, used + ':' + user) });
     if (r.ok) { keyNonce = used; return r; }
     if (r.nonce) nonce = r.nonce;
+    if (r.error === 'stale' && !again) return login(user, pass, true);   // (its one-time code was already used — try the fresh one)
     throw Object.assign(new Error(r.error), { reply: r });
   }
 
@@ -638,9 +639,17 @@
     } catch (e) { /* Bluetooth: handled by the disconnect event · Wi-Fi: shown by wifiLink(), retried on the next check */ }
   }
 
-  async function reLogin() {
-    if (!creds) { view('vLogin'); return; }
-    try { started(await login(creds.user, creds.pass)); } catch (e) { view('vLogin'); }
+  // Only one log-in at a time: after a reconnect several requests can all ask for one together, and each
+  // would use the same one-time code (the Pi then saw the extra ones as wrong passwords and could lock you out)
+  let reLoggingIn = null;
+  function reLogin() {
+    if (!creds) { view('vLogin'); return Promise.resolve(); }
+    if (!reLoggingIn) {
+      reLoggingIn = (async () => {
+        try { started(await login(creds.user, creds.pass)); } catch (e) { view('vLogin'); }
+      })().finally(() => { reLoggingIn = null; });
+    }
+    return reLoggingIn;
   }
 
   // The phone and the Pi lose touch (walked away, screen locked…) → reconnect without asking again
